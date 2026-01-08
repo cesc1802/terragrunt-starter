@@ -39,10 +39,10 @@ remote_state {
     # Naming aligned with Cloud Posse terraform-aws-tfstate-backend module output
     # Pattern: {namespace}-{stage}-{name}-{attributes} = {account_name}-{environment}-terraform-state
     bucket         = "${local.account_name}-${local.environment}-terraform-state"
-    key            = "${local.aws_region}/${path_relative_to_include()}/terraform.tfstate"
+    key            = "${path_relative_to_include()}/terraform.tfstate"
     region         = "us-east-1" # State bucket region (keep consistent)
     encrypt        = true
-    dynamodb_table = "${local.account_name}-${local.environment}-terraform-state"
+    dynamodb_table = "${local.account_name}-${local.environment}-terraform-state-lock"
 
     # Prevent accidental deletion
     skip_bucket_versioning             = false
@@ -64,13 +64,6 @@ generate "provider" {
   contents = <<EOF
 terraform {
   required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
 }
 
 provider "aws" {
