@@ -8,7 +8,7 @@
 
 ## Overview
 - **Priority**: P2
-- **Status**: Pending
+- **Status**: Completed
 - **Description**: Create shared tfstate-backend module configuration in `_envcommon/bootstrap/`
 
 ## Key Insights
@@ -140,9 +140,9 @@ inputs = {
 ```
 
 ## Todo List
-- [ ] Create `_envcommon/bootstrap/` directory
-- [ ] Create `_envcommon/bootstrap/tfstate-backend.hcl`
-- [ ] Verify HCL syntax with `terragrunt hclfmt`
+- [x] Create `_envcommon/bootstrap/` directory
+- [x] Create `_envcommon/bootstrap/tfstate-backend.hcl`
+- [x] Verify HCL syntax with `terragrunt hclfmt`
 
 ## Success Criteria
 - File follows existing _envcommon patterns
