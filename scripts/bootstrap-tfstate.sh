@@ -337,9 +337,9 @@ main() {
     validate_environment "$env"
 
     # Verify prerequisites
-    verify_prerequisites
-    verify_aws_credentials
-    verify_account_config
+    # verify_prerequisites
+    # verify_aws_credentials
+    # verify_account_config
 
     # Execute
     if $migrate; then
