@@ -11,7 +11,7 @@
 
 ```
 terragrunt-starter/
-├── terragrunt.hcl                    # Root configuration (backend, provider, global tags)
+├── root.hcl                          # Root configuration (backend, provider, global tags)
 ├── account.hcl                       # AWS account and environment definitions
 ├── Makefile                          # Build and deployment commands
 ├── README.md                         # Project overview and getting started guide
@@ -109,7 +109,7 @@ terragrunt-starter/
 
 ### Root Configuration
 
-**terragrunt.hcl**
+**root.hcl**
 - Backend configuration (S3 + DynamoDB state management)
 - Provider generation with default tags
 - Terraform version constraints
@@ -173,7 +173,7 @@ terragrunt-starter/
 The project uses a strict DRY (Don't Repeat Yourself) hierarchy:
 
 ```
-terragrunt.hcl (Root)
+root.hcl (Root)
   ├─ Backend configuration (S3 + DynamoDB)
   ├─ Provider setup
   └─ Global tags
@@ -332,6 +332,17 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 - Cloud Posse terraform-aws-tfstate-backend integration
 - Environment-aware state bucket and locking table setup
 - Force destroy capability for dev environment
+- Implements DRY pattern with dynamic module paths
+- Cloud Posse label inputs (namespace, stage, name, attributes)
+- Security defaults: AES256 encryption, public access blocking, deletion protection
+- Region tag for multi-region support
+
+**Documentation Updates (Phase 02):**
+- Updated README.md: 2 references to root.hcl configuration
+- Updated code-standards.md: 2 references to root.hcl and tfstate backend
+- Updated system-architecture.md: 1 reference to State Management Architecture
+- Updated codebase-summary.md: 3 references to Phase 02 completion and bootstrap module
+- Updated project-overview-pdr.md: 3 references to bootstrap functionality
 
 ### Phase 01 (Completed)
 

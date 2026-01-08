@@ -24,7 +24,7 @@ A production-ready Terragrunt project structure for managing AWS infrastructure 
 - **Requirement:** Multi-environment Terraform/Terragrunt configuration with DRY hierarchy
 - **Status:** Complete
 - **Implementation:**
-  - Root-level config (terragrunt.hcl): Backend, provider generation, global tags
+  - Root-level config (root.hcl): Backend, provider generation, global tags
   - Environment-level (env.hcl): Environment name, instance sizing, cost settings
   - Region-level (region.hcl): AWS region, availability zones
   - Module commons (_envcommon/): Shared module configs, sensible defaults
@@ -141,7 +141,7 @@ A production-ready Terragrunt project structure for managing AWS infrastructure 
 ## Architecture Hierarchy
 
 ```
-terragrunt.hcl (ROOT)
+root.hcl (ROOT)
   ├─ Backend: S3 + DynamoDB
   ├─ Provider generation
   └─ Global tags
@@ -169,7 +169,7 @@ terragrunt.hcl (ROOT)
 
 | File | Purpose | Scope |
 |---|---|---|
-| `terragrunt.hcl` | Root config | Global (all environments) |
+| `root.hcl` | Root config | Global (all environments) |
 | `account.hcl` | AWS account settings | Global |
 | `environments/{env}/env.hcl` | Environment variables | Single environment |
 | `environments/{env}/{region}/region.hcl` | Region variables | Single region |

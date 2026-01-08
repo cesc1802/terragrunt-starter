@@ -6,7 +6,7 @@ A production-ready Terragrunt project structure for managing AWS infrastructure 
 
 ```
 .
-├── terragrunt.hcl              # Root config (backend, provider)
+├── root.hcl                    # Root config (backend, provider)
 ├── account.hcl                 # AWS account settings
 ├── Makefile                    # Common commands
 │
@@ -46,7 +46,7 @@ A production-ready Terragrunt project structure for managing AWS infrastructure 
 ### DRY Hierarchy
 
 ```
-Root (terragrunt.hcl)
+Root (root.hcl)
     ↓ provides: backend config, provider generation
 Environment (env.hcl)
     ↓ provides: environment name, sizing defaults
