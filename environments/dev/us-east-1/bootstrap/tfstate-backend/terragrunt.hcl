@@ -9,12 +9,12 @@
 
 # UNCOMMENT AFTER BOOTSTRAP IS COMPLETE:
 # include "root" {
-#   path = find_in_parent_folders()
+#   path = find_in_parent_folders("root.hcl")
 # }
 
 # Include common tfstate-backend configuration
 include "envcommon" {
-  path   = "${dirname(find_in_parent_folders())}/_envcommon/bootstrap/tfstate-backend.hcl"
+  path   = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/bootstrap/tfstate-backend.hcl"
   expose = true
 }
 
