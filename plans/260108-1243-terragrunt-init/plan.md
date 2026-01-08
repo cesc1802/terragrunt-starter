@@ -1,7 +1,7 @@
 ---
 title: "Terragrunt TFState Backend Module"
 description: "Configure per-environment S3 state backends using terraform-aws-tfstate-backend module"
-status: in-progress
+status: completed
 priority: P2
 effort: 2h
 branch: main
@@ -29,7 +29,7 @@ Provision Terraform state backend infrastructure (S3 bucket + DynamoDB table) fo
 |---|-------|--------|--------|------|
 | 1 | UAT Environment Setup | Completed | 15m | [phase-01](./phase-01-uat-environment-setup.md) |
 | 2 | Common Module Config | Completed | 30m | [phase-02-envcommon-tfstate-backend.md](./phase-02-envcommon-tfstate-backend.md) |
-| 3 | Environment Deployments | Pending | 45m | [phase-03](./phase-03-environment-deployments.md) |
+| 3 | Environment Deployments | Completed | 45m | [phase-03](./phase-03-environment-deployments.md) |
 | 4 | Bootstrap & Migration | Pending | 30m | [phase-04](./phase-04-bootstrap-migration.md) |
 
 ## Dependencies

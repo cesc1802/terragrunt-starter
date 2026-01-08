@@ -7,7 +7,7 @@
 
 ## Overview
 - **Priority**: P2
-- **Status**: Pending
+- **Status**: Completed
 - **Description**: Create environment-specific terragrunt.hcl files for dev, uat, and prod
 
 ## Key Insights
@@ -270,13 +270,13 @@ inputs = {
 ```
 
 ## Todo List
-- [ ] Create dev bootstrap directory
-- [ ] Create dev terragrunt.hcl
-- [ ] Create uat bootstrap directory
-- [ ] Create uat terragrunt.hcl
-- [ ] Create prod bootstrap directory
-- [ ] Create prod terragrunt.hcl
-- [ ] Verify HCL syntax with `terragrunt hclfmt`
+- [x] Create dev bootstrap directory
+- [x] Create dev terragrunt.hcl
+- [x] Create uat bootstrap directory
+- [x] Create uat terragrunt.hcl
+- [x] Create prod bootstrap directory
+- [x] Create prod terragrunt.hcl
+- [x] Verify HCL syntax with `terragrunt hclfmt`
 
 ## Success Criteria
 - All three environment files created
