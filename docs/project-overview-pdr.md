@@ -4,7 +4,7 @@
 
 A production-ready Terragrunt project structure for managing AWS infrastructure with DRY (Don't Repeat Yourself) principles. Provides enterprise-grade configuration inheritance, environment isolation, and multi-region support across dev, staging, UAT, and production environments.
 
-**Status:** Phase 03 Bootstrap Infrastructure Configuration - completed
+**Status:** Phase 04 Bootstrap Deployment & State Migration - in progress
 **Last Updated:** 2026-01-08
 
 ## Current Environments
@@ -245,10 +245,17 @@ Terragrunt automatically orders deployments:
 - Phase 01: UAT environment setup (✓ 2026-01-08)
 - Phase 02: TFState backend module setup (✓ 2026-01-08)
 - Phase 03: Bootstrap infrastructure configuration (✓ 2026-01-08)
+- Phase 04: Bootstrap deployment scripts & automation (✓ 2026-01-08)
+  - Bootstrap helper script with prerequisite validation
+  - Makefile targets for automated bootstrap workflow
+  - Deployment guide documentation
 - Directory typo fix: environtments → environments
 
 ### In Progress
-- Phase 04: Bootstrap deployment & state migration
+- Phase 04+: Bootstrap infrastructure deployment & state migration
+  - Deploy dev bootstrap → migrate state
+  - Deploy uat bootstrap → infrastructure
+  - Deploy prod bootstrap → primary & secondary regions
 
 ### Planned
 - Phase 05: Application infrastructure deployment (networking, RDS, ECS)

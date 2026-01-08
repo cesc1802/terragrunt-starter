@@ -84,6 +84,9 @@ terragrunt-starter/
 │   ├── skills/                       # Python skills and utilities
 │   └── scripts/                      # Additional automation scripts
 │
+├── scripts/                          # Deployment and bootstrap scripts (NEW in Phase 04)
+│   └── bootstrap-tfstate.sh          # Bootstrap S3 + DynamoDB state backend
+│
 ├── .github/                          # GitHub configuration
 │   └── workflows/                    # CI/CD pipeline definitions (TODO)
 │
@@ -290,9 +293,22 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 03 (Current)
+### Phase 04 (Current)
 
 **New Files:**
+1. `scripts/bootstrap-tfstate.sh` - Bootstrap helper script with prerequisite validation
+2. `docs/deployment-guide.md` - Deployment and bootstrap procedures
+
+**Key Changes:**
+- Bootstrap script validates AWS credentials, Terraform, Terragrunt installations
+- Makefile targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
+- Deployment order enforced: dev → uat → prod
+- State migration procedure automated with --migrate flag
+- Bootstrap commands integrated into Make workflow
+
+### Phase 03 (Completed)
+
+**Files Created:**
 1. `environments/dev/us-east-1/bootstrap/tfstate-backend/terragrunt.hcl` - Dev bootstrap config
 2. `environments/uat/us-east-1/bootstrap/tfstate-backend/terragrunt.hcl` - UAT bootstrap config
 3. `environments/prod/us-east-1/bootstrap/tfstate-backend/terragrunt.hcl` - Prod bootstrap config
@@ -305,10 +321,6 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 - Bootstrap procedure documented (local state → migrate to S3)
 - README.md updated with bootstrap instructions
 - Environment-specific bootstrap configurations with proper tagging
-
-**Breaking Changes:**
-- Bucket/DynamoDB naming scheme updated to match Cloud Posse module (may require migration)
-- Root terragrunt.hcl now generates bucket/table names based on env.hcl
 
 ### Phase 02 (Completed)
 
@@ -447,7 +459,12 @@ Comprehensive documentation available in `./docs/`:
 - ✓ Updated README.md with bootstrap instructions
 - ✓ Environment-specific bootstrap configs with proper tagging
 
-### In Progress (Phase 04)
+### Completed (Phase 04)
+- ✓ Bootstrap helper script (`scripts/bootstrap-tfstate.sh`) with prerequisite validation
+- ✓ Makefile bootstrap targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
+- ✓ Deployment guide documentation
+
+### In Progress (Phase 04+)
 - [ ] Deploy bootstrap infrastructure to dev
 - [ ] Migrate dev state to S3 backend
 - [ ] Deploy bootstrap infrastructure to uat
@@ -455,10 +472,10 @@ Comprehensive documentation available in `./docs/`:
 - [ ] Validate UAT networking stack
 - [ ] Validate UAT data stores
 - [ ] Deploy bootstrap infrastructure to prod
-
-### Planned (Phase 04+)
 - [ ] Deploy prod primary region (us-east-1)
 - [ ] Deploy prod secondary region (eu-west-1)
+
+### Planned (Phase 05+)
 - [ ] CI/CD pipeline setup (GitHub Actions)
 - [ ] Automated deployments
 - [ ] Multi-region failover testing
