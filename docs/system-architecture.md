@@ -110,29 +110,35 @@
 **Dependencies:** None
 **Outputs Used By:** RDS, ECS Cluster, other services
 
-#### Configuration
-- **Module Source:** terraform-aws-modules/vpc/aws
-- **Public Subnets:** Internet-facing (web tier)
-- **Private Subnets:** Protected (application tier)
+#### Configuration (Phase 05)
+- **Module Source:** Local terraform-aws-vpc module (forked/vendored)
+- **Public Subnets:** Internet-facing (web tier, one per AZ)
+- **Private Subnets:** Protected (application tier, one per AZ)
+- **Database Subnets:** Isolated for RDS (one per AZ, managed subnet group)
 - **NAT Gateways:** Single (dev/staging/UAT) or per-AZ (prod)
-- **Route Tables:** Separate for public/private traffic
+- **DNS:** Hostnames and support enabled
+- **EKS Tags:** Kubernetes readiness included for future expansion
 
-#### Environment-Specific Settings
+#### Environment-Specific Settings (Phase 05)
 
 | Setting | Dev | Staging | UAT | Prod |
 |---|---|---|---|---|
-| CIDR Block | 10.0.0.0/16 | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 (us-east-1) |
+| CIDR Block | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 | 10.40.0.0/16 (us-east-1), 10.50.0.0/16 (eu-west-1) |
 | AZs | 3 | 3 | 3 | 3 |
-| Public Subnets | 1 | 1 | 1 | 3 (one per AZ) |
-| Private Subnets | 1 | 1 | 1 | 3 (one per AZ) |
-| NAT Gateways | 1 | 1 | 1 | 3 (one per AZ) |
+| Public Subnets | 3 (10.10.1-3.0/24) | 3 | 3 | 3 (one per AZ) |
+| Private Subnets | 3 (10.10.11-13.0/24) | 3 | 3 | 3 (one per AZ) |
+| Database Subnets | 3 (10.10.21-23.0/24) | 3 | 3 | 3 (one per AZ) |
+| NAT Gateways | 0 (disabled) | 1 | 1 | 3 (one per AZ) |
 | Flow Logs | Disabled | Disabled | Disabled | Enabled |
+| Internet Gateway | Yes | Yes | Yes | Yes |
 
-#### Deployment Order
+#### Deployment Order (Phase 05)
 ```
-environments/{env}/us-east-1/networking/vpc/terragrunt.hcl
-  └─ Creates VPC, subnets, NAT gateways, route tables
+environments/{env}/us-east-1/01-infra/network/vpc/terragrunt.hcl
+  └─ Creates VPC, public/private/database subnets, route tables, DNS
 ```
+
+**Phase 05 Status:** Dev VPC deployed with 3-tier subnet architecture
 
 ### Layer 2: Data Stores (RDS)
 
@@ -160,9 +166,9 @@ environments/{env}/us-east-1/networking/vpc/terragrunt.hcl
 
 #### Deployment Order
 ```
-environments/{env}/us-east-1/networking/vpc/
-  ↓ (requires VPC security groups)
-environments/{env}/us-east-1/data-stores/rds/
+environments/{env}/us-east-1/01-infra/network/vpc/
+  ↓ (requires VPC security groups, subnets)
+environments/{env}/us-east-1/02-data/rds/
   └─ Creates RDS instance with security group rules
 ```
 
@@ -190,9 +196,9 @@ environments/{env}/us-east-1/data-stores/rds/
 
 #### Deployment Order
 ```
-environments/{env}/us-east-1/networking/vpc/
-  ↓ (requires VPC subnets)
-environments/{env}/us-east-1/services/ecs-cluster/
+environments/{env}/us-east-1/01-infra/network/vpc/
+  ↓ (requires VPC subnets, security groups)
+environments/{env}/us-east-1/03-services/ecs-cluster/
   └─ Creates ECS cluster, auto-scaling group, instances
 ```
 

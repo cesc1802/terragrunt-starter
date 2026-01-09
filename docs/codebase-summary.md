@@ -21,7 +21,7 @@ terragrunt-starter/
 │   ├── bootstrap/
 │   │   └── tfstate-backend.hcl       # TFState backend common config (S3 + DynamoDB)
 │   ├── networking/
-│   │   └── vpc.hcl                   # Common VPC configuration
+│   │   └── vpc.hcl                   # Common VPC configuration (Phase 05)
 │   ├── data-stores/
 │   │   └── rds.hcl                   # Common RDS configuration
 │   └── services/
@@ -32,12 +32,13 @@ terragrunt-starter/
 │   │   ├── env.hcl                   # Dev environment variables (small instance, no deletion protection)
 │   │   └── us-east-1/
 │   │       ├── region.hcl            # Dev region configuration
-│   │       ├── bootstrap/
+│   │       ├── 00-bootstrap/
 │   │       │   └── tfstate-backend/
-│   │       │       └── terragrunt.hcl  # Dev state backend (NEW in Phase 03)
-│   │       ├── networking/
-│   │       │   └── vpc/
-│   │       │       └── terragrunt.hcl
+│   │       │       └── terragrunt.hcl  # Dev state backend (Phase 03)
+│   │       ├── 01-infra/
+│   │       │   └── network/
+│   │       │       └── vpc/
+│   │       │           └── terragrunt.hcl  # Dev VPC deployment (Phase 05)
 │   │       ├── data-stores/
 │   │       │   └── rds/
 │   │       │       └── terragrunt.hcl
@@ -146,10 +147,13 @@ terragrunt-starter/
 - DynamoDB locking table with deletion protection
 - Runs with local state first, migrated to S3 after creation
 
-**_envcommon/networking/vpc.hcl**
-- VPC module source (terraform-aws-modules/vpc/aws)
-- Common VPC configuration
-- Subnet and NAT gateway defaults
+**_envcommon/networking/vpc.hcl** (Phase 05)
+- VPC module source (local terraform-aws-vpc module)
+- Common VPC configuration with DRY pattern
+- Public, private, and database subnets
+- NAT gateway and DNS settings
+- EKS/ELB subnet tags for Kubernetes readiness
+- Database subnet group creation
 
 **_envcommon/data-stores/rds.hcl**
 - RDS module source (terraform-aws-modules/rds/aws)
@@ -212,10 +216,12 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 ## Deployed Modules
 
 ### Networking
-- **VPC** (Virtual Private Cloud)
-  - Location: `environments/{env}/{region}/networking/vpc/`
-  - Provides: VPC, subnets, NAT gateways, route tables
-  - Outputs: vpc_id, subnet_ids, nat_gateway_ids
+- **VPC** (Virtual Private Cloud) - Phase 05
+  - Location: `environments/{env}/{region}/01-infra/network/vpc/`
+  - Provides: VPC, public/private/database subnets, NAT gateways, route tables, DNS
+  - Key Features: EKS tags, deletion protection, flow logs (prod)
+  - Dev Config: 10.10.0.0/16 CIDR, NAT disabled, 3 AZs
+  - Outputs: vpc_id, public_subnet_ids, private_subnet_ids, database_subnet_ids
 
 ### Data Stores
 - **RDS** (Relational Database Service)
@@ -293,13 +299,27 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 04 (Current)
+### Phase 05 (Current)
 
 **New Files:**
+1. `_envcommon/networking/vpc.hcl` - Common VPC configuration (NEW)
+2. `environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl` - Dev VPC deployment (NEW)
+
+**Key Changes:**
+- VPC module follows DRY pattern (common config + environment overrides)
+- Dev VPC: 10.10.0.0/16 CIDR with 3-tier subnets (public/private/database)
+- NAT disabled for dev (cost optimization)
+- EKS/ELB subnet tags included for future Kubernetes readiness
+- Database subnet group created
+- DNS hostnames and support enabled
+
+### Phase 04 (Completed)
+
+**Files:**
 1. `scripts/bootstrap-tfstate.sh` - Bootstrap helper script with prerequisite validation
 2. `docs/deployment-guide.md` - Deployment and bootstrap procedures
 
-**Key Changes:**
+**Changes:**
 - Bootstrap script validates AWS credentials, Terraform, Terragrunt installations
 - Makefile targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
 - Deployment order enforced: dev → uat → prod
@@ -470,21 +490,26 @@ Comprehensive documentation available in `./docs/`:
 - ✓ Updated README.md with bootstrap instructions
 - ✓ Environment-specific bootstrap configs with proper tagging
 
+### Completed (Phase 05)
+- ✓ Common VPC configuration (`_envcommon/networking/vpc.hcl`) with DRY pattern
+- ✓ Dev VPC deployment (`environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl`)
+- ✓ VPC infrastructure documentation
+
 ### Completed (Phase 04)
 - ✓ Bootstrap helper script (`scripts/bootstrap-tfstate.sh`) with prerequisite validation
 - ✓ Makefile bootstrap targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
 - ✓ Deployment guide documentation
 
-### In Progress (Phase 04+)
-- [ ] Deploy bootstrap infrastructure to dev
-- [ ] Migrate dev state to S3 backend
-- [ ] Deploy bootstrap infrastructure to uat
-- [ ] Deploy UAT infrastructure (networking, RDS, ECS)
-- [ ] Validate UAT networking stack
-- [ ] Validate UAT data stores
+### In Progress (Phase 05+)
+- [x] Create common VPC configuration (_envcommon/networking/vpc.hcl) - Phase 05
+- [x] Deploy dev VPC (environments/dev/us-east-1/01-infra/network/vpc) - Phase 05
+- [ ] Deploy VPC for staging environment
+- [ ] Deploy VPC for UAT environment
 - [ ] Deploy bootstrap infrastructure to prod
-- [ ] Deploy prod primary region (us-east-1)
-- [ ] Deploy prod secondary region (eu-west-1)
+- [ ] Deploy VPC to prod primary region (us-east-1)
+- [ ] Deploy VPC to prod secondary region (eu-west-1)
+- [ ] Deploy RDS infrastructure (all environments)
+- [ ] Deploy ECS infrastructure (all environments)
 
 ### Planned (Phase 05+)
 - [ ] CI/CD pipeline setup (GitHub Actions)
