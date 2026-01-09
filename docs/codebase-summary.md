@@ -148,12 +148,15 @@ terragrunt-starter/
 - Runs with local state first, migrated to S3 after creation
 
 **_envcommon/networking/vpc.hcl** (Phase 05)
-- VPC module source (local terraform-aws-vpc module)
+- VPC module source: `terraform-aws-modules/vpc/aws v5.17.0`
 - Common VPC configuration with DRY pattern
-- Public, private, and database subnets
-- NAT gateway and DNS settings
-- EKS/ELB subnet tags for Kubernetes readiness
-- Database subnet group creation
+- Subnet CIDRs calculated via cidrsubnet() from vpc_cidr
+- Public/private/database subnets (1 per AZ via loops)
+- NAT gateway configurable per environment (single_nat_gateway mode)
+- VPC Flow Logs configurable per environment
+- DNS hostnames and support enabled
+- Database subnet group created
+- Default security group locked down (no ingress/egress)
 
 **_envcommon/data-stores/rds.hcl**
 - RDS module source (terraform-aws-modules/rds/aws)
@@ -217,10 +220,12 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ### Networking
 - **VPC** (Virtual Private Cloud) - Phase 05
+  - Module: `terraform-aws-modules/vpc/aws v5.17.0`
   - Location: `environments/{env}/{region}/01-infra/network/vpc/`
-  - Provides: VPC, public/private/database subnets, NAT gateways, route tables, DNS
-  - Key Features: EKS tags, deletion protection, flow logs (prod)
-  - Dev Config: 10.10.0.0/16 CIDR, NAT disabled, 3 AZs
+  - Provides: VPC, subnets (public/private/database), IGW, NAT, route tables, DNS
+  - Subnets: Calculated from vpc_cidr using cidrsubnet(), one per AZ
+  - Subnet ranges: Public (+1,+2,+3), Private (+11,+12,+13), Database (+21,+22,+23)
+  - Dev Config: vpc_cidr=10.10.0.0/16, NAT disabled, Flow Logs disabled
   - Outputs: vpc_id, public_subnet_ids, private_subnet_ids, database_subnet_ids
 
 ### Data Stores
@@ -302,16 +307,20 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 ### Phase 05 (Current)
 
 **New Files:**
-1. `_envcommon/networking/vpc.hcl` - Common VPC configuration (NEW)
-2. `environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl` - Dev VPC deployment (NEW)
+1. `_envcommon/networking/vpc.hcl` - Common VPC configuration
+2. `environments/dev/env.hcl` - Dev environment variables (vpc_cidr, nat, flow_logs)
+3. `environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl` - Dev VPC deployment
 
 **Key Changes:**
-- VPC module follows DRY pattern (common config + environment overrides)
-- Dev VPC: 10.10.0.0/16 CIDR with 3-tier subnets (public/private/database)
-- NAT disabled for dev (cost optimization)
-- EKS/ELB subnet tags included for future Kubernetes readiness
+- Module: Official `terraform-aws-modules/vpc/aws v5.17.0`
+- vpc_cidr parameterized in env.hcl (dev: 10.10.0.0/16)
+- Subnet CIDRs auto-calculated via cidrsubnet() function
+- Subnet layout: Public /24s (+1,+2,+3), Private (+11,+12,+13), Database (+21,+22,+23)
+- NAT Gateway configurable per environment (dev: disabled, cost optimization ~$32/mo)
+- VPC Flow Logs configurable per environment (dev: disabled, cost optimization)
+- Default security group locked down (no ingress/egress rules)
+- DNS hostnames and support enabled for all environments
 - Database subnet group created
-- DNS hostnames and support enabled
 
 ### Phase 04 (Completed)
 

@@ -1,13 +1,13 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # COMMON VPC CONFIGURATION
-# Creates VPC with public, private, and database subnets using local terraform-aws-vpc module.
+# Creates VPC with public, private, and database subnets using terraform-aws-vpc module.
 # Provides foundation networking for all environments.
 # ---------------------------------------------------------------------------------------------------------------------
 
 terraform {
-  # Local module - terraform-aws-vpc (forked/vendored)
-  # Path resolves from: environments/{env}/{region}/01-infra/network/vpc/
-  source = "${dirname(find_in_parent_folders("account.hcl"))}/modules/terraform-aws-vpc"
+  # Official Terraform AWS VPC module from registry
+  # https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws
+  source = "tfr:///terraform-aws-modules/vpc/aws?version=5.17.0"
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -29,8 +29,18 @@ locals {
   # VPC naming
   vpc_name = "${local.account_name}-${local.environment}-vpc"
 
-  # Environment-specific settings (can be overridden)
-  enable_multi_az = try(local.env_vars.locals.enable_multi_az, false)
+  # Load from env.hcl with sensible defaults
+  vpc_cidr           = try(local.env_vars.locals.vpc_cidr, "10.0.0.0/16")
+  enable_nat_gateway = try(local.env_vars.locals.enable_nat_gateway, false)
+  enable_flow_log    = try(local.env_vars.locals.enable_flow_log, false)
+
+  # Calculate subnet CIDRs using cidrsubnet()
+  # Public:   /24 subnets starting at .1, .2, .3
+  # Private:  /24 subnets starting at .11, .12, .13
+  # Database: /24 subnets starting at .21, .22, .23
+  public_subnets   = [for i, az in local.azs : cidrsubnet(local.vpc_cidr, 8, i + 1)]
+  private_subnets  = [for i, az in local.azs : cidrsubnet(local.vpc_cidr, 8, i + 11)]
+  database_subnets = [for i, az in local.azs : cidrsubnet(local.vpc_cidr, 8, i + 21)]
 }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -39,7 +49,13 @@ locals {
 
 inputs = {
   name = local.vpc_name
+  cidr = local.vpc_cidr
   azs  = local.azs
+
+  # Subnet CIDRs calculated from vpc_cidr
+  public_subnets   = local.public_subnets
+  private_subnets  = local.private_subnets
+  database_subnets = local.database_subnets
 
   # DNS settings
   enable_dns_hostnames = true
@@ -48,18 +64,18 @@ inputs = {
   # Internet Gateway (required for public subnets)
   create_igw = true
 
-  # NAT Gateway - disabled by default, enable per environment
-  enable_nat_gateway = false
+  # NAT Gateway - loaded from env.hcl, single NAT for cost optimization
+  enable_nat_gateway = local.enable_nat_gateway
   single_nat_gateway = true
 
-  # VPC Flow Logs - disabled by default, enable for prod
-  enable_flow_log = false
+  # VPC Flow Logs - loaded from env.hcl
+  enable_flow_log = local.enable_flow_log
 
   # Database subnet group
   create_database_subnet_group = true
 
-  # Default security group management
-  manage_default_security_group = true
+  # Default security group management - locked down
+  manage_default_security_group  = true
   default_security_group_ingress = []
   default_security_group_egress  = []
 
@@ -68,14 +84,5 @@ inputs = {
     Component   = "networking"
     Environment = local.environment
     ManagedBy   = "Terragrunt"
-  }
-
-  # EKS/ELB subnet tags (for future Kubernetes readiness)
-  public_subnet_tags = {
-    "kubernetes.io/role/elb" = "1"
-  }
-
-  private_subnet_tags = {
-    "kubernetes.io/role/internal-elb" = "1"
   }
 }

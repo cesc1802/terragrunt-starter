@@ -5,7 +5,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 locals {
-  account_name   = "fng"    # TODO: Change to your company/project name
+  account_name   = "fng"              # TODO: Change to your company/project name
   aws_account_id = "1802180418021804" # TODO: Change to your AWS Account ID
 
   # Optional: Add more account-level settings

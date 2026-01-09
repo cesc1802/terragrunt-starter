@@ -111,34 +111,39 @@
 **Outputs Used By:** RDS, ECS Cluster, other services
 
 #### Configuration (Phase 05)
-- **Module Source:** Local terraform-aws-vpc module (forked/vendored)
-- **Public Subnets:** Internet-facing (web tier, one per AZ)
-- **Private Subnets:** Protected (application tier, one per AZ)
-- **Database Subnets:** Isolated for RDS (one per AZ, managed subnet group)
-- **NAT Gateways:** Single (dev/staging/UAT) or per-AZ (prod)
+- **Module Source:** `terraform-aws-modules/vpc/aws v5.17.0`
+- **Public Subnets:** Internet-facing, CIDRs via cidrsubnet() (+1,+2,+3 offsets)
+- **Private Subnets:** Protected, CIDRs via cidrsubnet() (+11,+12,+13 offsets)
+- **Database Subnets:** RDS-ready, CIDRs via cidrsubnet() (+21,+22,+23 offsets)
 - **DNS:** Hostnames and support enabled
-- **EKS Tags:** Kubernetes readiness included for future expansion
+- **Internet Gateway:** Always created
+- **NAT Gateways:** single_nat_gateway mode (one NAT per env if enabled)
+- **Database Subnet Group:** Auto-created
+- **Default Security Group:** Locked down (no ingress/egress)
 
 #### Environment-Specific Settings (Phase 05)
 
 | Setting | Dev | Staging | UAT | Prod |
 |---|---|---|---|---|
-| CIDR Block | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 | 10.40.0.0/16 (us-east-1), 10.50.0.0/16 (eu-west-1) |
+| VPC CIDR | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 | 10.40.0.0/16, 10.50.0.0/16 |
 | AZs | 3 | 3 | 3 | 3 |
-| Public Subnets | 3 (10.10.1-3.0/24) | 3 | 3 | 3 (one per AZ) |
-| Private Subnets | 3 (10.10.11-13.0/24) | 3 | 3 | 3 (one per AZ) |
-| Database Subnets | 3 (10.10.21-23.0/24) | 3 | 3 | 3 (one per AZ) |
-| NAT Gateways | 0 (disabled) | 1 | 1 | 3 (one per AZ) |
+| Public Subnets | 3×/24 (+1,2,3) | 3×/24 | 3×/24 | 3×/24 |
+| Private Subnets | 3×/24 (+11,12,13) | 3×/24 | 3×/24 | 3×/24 |
+| Database Subnets | 3×/24 (+21,22,23) | 3×/24 | 3×/24 | 3×/24 |
+| NAT Gateway | Disabled | Enabled | Enabled | Enabled (per-AZ) |
 | Flow Logs | Disabled | Disabled | Disabled | Enabled |
-| Internet Gateway | Yes | Yes | Yes | Yes |
+| IGW | Yes | Yes | Yes | Yes |
+| Default SG | Locked | Locked | Locked | Locked |
 
 #### Deployment Order (Phase 05)
 ```
-environments/{env}/us-east-1/01-infra/network/vpc/terragrunt.hcl
-  └─ Creates VPC, public/private/database subnets, route tables, DNS
+_envcommon/networking/vpc.hcl (common config + cidrsubnet() calculations)
+  ↓
+environments/{env}/us-east-1/01-infra/network/vpc/terragrunt.hcl (env-specific overrides)
+  └─ Creates VPC with calculated subnets, route tables, DNS, optional NAT/Flow Logs
 ```
 
-**Phase 05 Status:** Dev VPC deployed with 3-tier subnet architecture
+**Phase 05 Status:** Dev VPC deployed (10.10.0.0/16, NAT/Flow Logs disabled)
 
 ### Layer 2: Data Stores (RDS)
 
