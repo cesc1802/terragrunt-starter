@@ -3,7 +3,10 @@
 # Common commands for managing infrastructure
 # =============================================================================
 
-.PHONY: help init plan apply destroy fmt validate clean graph
+.PHONY: help init plan apply destroy fmt validate clean graph \
+        plan-all apply-all destroy-all init-all output \
+        bootstrap bootstrap-migrate bootstrap-verify bootstrap-all \
+        scaffold-region list-modules update-modules add-module show-regions
 
 # Default environment and region
 ENV ?= dev
@@ -158,3 +161,91 @@ bootstrap-all: ## Bootstrap all environments in order (dev -> uat -> prod)
 			fi; \
 		done; \
 	fi
+
+# =============================================================================
+# SCAFFOLD COMMANDS
+# =============================================================================
+
+scaffold-region: ## Scaffold new region in an environment (ENV required)
+ifndef ENV
+	$(error ENV is required. Example: make scaffold-region ENV=dev)
+endif
+	@echo "$(GREEN)Scaffolding new region in $(ENV)...$(NC)"
+	./scripts/scaffold-region.sh $(ENV)
+
+# =============================================================================
+# MODULE MANAGEMENT COMMANDS
+# =============================================================================
+
+list-modules: ## List vendored modules and versions
+	@echo "$(GREEN)Vendored Terraform Modules:$(NC)"
+	@echo ""
+	@if [ -f modules/README.md ]; then \
+		grep -A 100 '| Module |' modules/README.md | head -10; \
+	else \
+		echo "  modules/README.md not found"; \
+		echo "  Listing module directories:"; \
+		ls -d modules/*/ 2>/dev/null | sed 's/modules\//  - /' | sed 's/\///' || echo "  No modules found"; \
+	fi
+
+update-modules: ## Update vendored modules (MODULE and VERSION required)
+ifndef MODULE
+	$(error MODULE is required. Example: make update-modules MODULE=terraform-aws-vpc VERSION=5.18.0)
+endif
+ifndef VERSION
+	$(error VERSION is required. Example: make update-modules MODULE=terraform-aws-vpc VERSION=5.18.0)
+endif
+ifeq ($(findstring terraform-aws-,$(MODULE)),)
+	$(error MODULE must start with 'terraform-aws-'. Got: $(MODULE))
+endif
+	@echo "$(YELLOW)Updating $(MODULE) to $(VERSION)...$(NC)"
+	@REMOTE_NAME="tf-$$(echo $(MODULE) | sed 's/terraform-aws-//')"; \
+	if ! git remote | grep -q "$$REMOTE_NAME"; then \
+		echo "$(RED)Remote $$REMOTE_NAME not found. Add it first:$(NC)"; \
+		echo "  git remote add $$REMOTE_NAME https://github.com/terraform-aws-modules/$(MODULE).git"; \
+		exit 1; \
+	fi; \
+	git fetch $$REMOTE_NAME; \
+	git subtree pull --prefix=modules/$(MODULE) $$REMOTE_NAME $(VERSION) --squash; \
+	echo "$(GREEN)Update complete! Update modules/README.md$(NC)"
+
+add-module: ## Add new vendored module (MODULE and VERSION required)
+ifndef MODULE
+	$(error MODULE is required. Example: make add-module MODULE=terraform-aws-rds VERSION=6.10.0)
+endif
+ifndef VERSION
+	$(error VERSION is required. Example: make add-module MODULE=terraform-aws-rds VERSION=6.10.0)
+endif
+ifeq ($(findstring terraform-aws-,$(MODULE)),)
+	$(error MODULE must start with 'terraform-aws-'. Got: $(MODULE))
+endif
+	@echo "$(GREEN)Adding $(MODULE) at $(VERSION)...$(NC)"
+	@REMOTE_NAME="tf-$$(echo $(MODULE) | sed 's/terraform-aws-//')"; \
+	if git remote | grep -q "$$REMOTE_NAME"; then \
+		echo "Remote $$REMOTE_NAME already exists"; \
+	else \
+		git remote add $$REMOTE_NAME https://github.com/terraform-aws-modules/$(MODULE).git; \
+	fi; \
+	git fetch $$REMOTE_NAME; \
+	git subtree add --prefix=modules/$(MODULE) $$REMOTE_NAME $(VERSION) --squash; \
+	echo "$(GREEN)Module added! Update modules/README.md$(NC)"
+
+# =============================================================================
+# DEVELOPMENT HELPERS
+# =============================================================================
+
+show-regions: ## Show all configured regions per environment
+	@echo "$(GREEN)Configured Regions:$(NC)"
+	@# Note: Environment/region directory names are trusted (infra team controlled)
+	@for env_dir in environments/*/; do \
+		env=$$(basename "$$env_dir" | tr -cd '[:alnum:]-_'); \
+		echo ""; \
+		echo "  $(YELLOW)$$env:$(NC)"; \
+		for region_dir in "$$env_dir"*/; do \
+			if [ -f "$$region_dir/region.hcl" ]; then \
+				region=$$(basename "$$region_dir" | tr -cd '[:alnum:]-_'); \
+				cidr=$$(grep 'vpc_cidr' "$$region_dir/region.hcl" 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "N/A"); \
+				echo "    - $$region (CIDR: $$cidr)"; \
+			fi; \
+		done; \
+	done

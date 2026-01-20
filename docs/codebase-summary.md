@@ -4,7 +4,7 @@
 
 **Terragrunt Starter** - A production-ready infrastructure-as-code project for managing AWS environments with DRY principles and configuration inheritance.
 
-**Status:** Active development (Phase 04: Multi-Region Dev Setup completed)
+**Status:** Active development (Phase 05: Makefile Updates completed)
 **Last Updated:** 2026-01-20
 
 ## Directory Structure
@@ -360,7 +360,31 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 04 (Current - Multi-Region Dev Setup)
+### Phase 05 (Current - Makefile Updates)
+
+**Completed:** 2026-01-20
+
+**New Makefile Targets Added (5 total):**
+1. `scaffold-region` - Scaffold new region in an environment (ENV required)
+2. `list-modules` - List vendored modules and versions
+3. `update-modules` - Update vendored modules (MODULE and VERSION required, validates terraform-aws- prefix)
+4. `add-module` - Add new vendored module (MODULE and VERSION required, validates terraform-aws- prefix)
+5. `show-regions` - Show all configured regions per environment with CIDR blocks
+
+**Key Features:**
+- scaffold-region: Delegates to `./scripts/scaffold-region.sh` for interactive region setup
+- list-modules: Reads from `modules/README.md` or lists directories, helpful for tracking versions
+- add-module/update-modules: Git subtree integration with validation that MODULE starts with terraform-aws- prefix
+- show-regions: Dynamically scans environments directory and displays all configured regions with their VPC CIDR blocks
+- All targets follow existing Makefile conventions (color output, error checking, ENV/MODULE/VERSION parameters)
+
+**Documentation Updates (Phase 05):**
+- Updated README.md: Added 5 new targets to Common Commands table
+- Updated codebase-summary.md: Status updated, Phase 05 section added
+
+**Purpose:** Enhance developer productivity with better module and region visibility; consolidate deployment commands in single Makefile.
+
+### Phase 04 (Multi-Region Dev Setup)
 
 **Completed:** 2026-01-20
 

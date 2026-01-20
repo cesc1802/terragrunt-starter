@@ -1,15 +1,16 @@
 ---
 title: "Dev Environment Template for us-west-1"
 description: "Create parameterized template for deploying full-stack infra to new regions"
-status: in-progress
+status: complete
 priority: P2
 effort: 6h
 branch: master
 tags: [terragrunt, multi-region, infrastructure, automation]
 created: 2026-01-20
-completed_phases: 4
+completed_phases: 5
 phase_03_completed: 2026-01-20T13:23:00Z
 phase_04_completed: 2026-01-20T14:19:00Z
+phase_05_completed: 2026-01-20T15:24:00Z
 ---
 
 # Dev Environment Template for us-west-1
@@ -42,7 +43,7 @@ Create reusable template structure for deploying full-stack infrastructure (VPC,
 | [02](phase-02-update-envcommon.md) | Create _envcommon files + move CIDR | 1.5h | COMPLETE |
 | [03](phase-03-scaffold-script.md) | Create scaffold script with prompts | 1h | COMPLETE |
 | [04](phase-04-us-west-1-deployment.md) | Create us-west-1 structure and deploy | 1.5h | COMPLETE |
-| [05](phase-05-makefile-updates.md) | Add Makefile targets | 1h | PENDING |
+| [05](phase-05-makefile-updates.md) | Add Makefile targets | 1h | COMPLETE |
 
 ## Dependency Graph
 

@@ -162,6 +162,11 @@ make apply-all ENV=dev REGION=us-east-1
 | `make apply-all ENV=<env>` | Apply all (with dependency order) |
 | `make clean` | Remove all Terragrunt caches |
 | `make graph ENV=<env>` | Generate dependency graph |
+| `make scaffold-region ENV=<env>` | Scaffold new region (interactive) |
+| `make list-modules` | List vendored modules and versions |
+| `make add-module MODULE=<name> VERSION=<ver>` | Add new module (MODULE must start with terraform-aws-) |
+| `make update-modules MODULE=<name> VERSION=<ver>` | Update module (MODULE must start with terraform-aws-) |
+| `make show-regions` | Show all configured regions per environment |
 
 ## 🔗 Dependencies
 
