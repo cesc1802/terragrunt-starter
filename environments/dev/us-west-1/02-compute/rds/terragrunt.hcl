@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # RDS - DEV US-WEST-1
 # PostgreSQL database for us-west-1 region.
-# Configuration inherited from _envcommon/data-stores/rds.hcl.
+# Configuration inherited from _envcommon/compute/rds.hcl.
 # ---------------------------------------------------------------------------------------------------------------------
 
 include "root" {
@@ -9,7 +9,7 @@ include "root" {
 }
 
 include "envcommon" {
-  path   = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/data-stores/rds.hcl"
+  path   = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/compute/rds.hcl"
   expose = true
 }
 
@@ -21,7 +21,7 @@ locals {
 }
 
 dependency "vpc" {
-  config_path = "../../network/vpc"
+  config_path = "../../01-infra/network/vpc"
 
   mock_outputs = {
     database_subnet_group_name = "mock-db-subnet-group"

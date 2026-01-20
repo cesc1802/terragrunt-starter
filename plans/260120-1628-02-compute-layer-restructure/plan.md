@@ -1,12 +1,13 @@
 ---
 title: "02-compute Layer Restructure"
 description: "Move RDS and ECS to new 02-compute layer for CPU/RAM resources"
-status: in-progress
+status: completed
 priority: P2
 effort: 2h
 branch: master
 tags: [terragrunt, restructure, layer-organization]
 created: 2026-01-20
+completed_at: 2026-01-20T16:58
 ---
 
 # 02-compute Layer Restructure
@@ -72,9 +73,9 @@ _envcommon/
 | Phase | Description | Effort | Status |
 |-------|-------------|--------|--------|
 | [01](phase-01-envcommon-restructure.md) | Move _envcommon files to compute/ | 30m | DONE |
-| [02](phase-02-region-restructure.md) | Restructure us-west-1 and us-east-1 | 45m | PENDING |
-| [03](phase-03-update-scaffold-script.md) | Update scaffold-region.sh for 02-compute | 30m | PENDING |
-| [04](phase-04-validation.md) | Validate configs and test scaffold | 15m | PENDING |
+| [02](phase-02-region-restructure.md) | Restructure us-west-1 and us-east-1 | 45m | DONE |
+| [03](phase-03-update-scaffold-script.md) | Update scaffold-region.sh for 02-compute | 30m | DONE |
+| [04](phase-04-validation.md) | Validate configs and test scaffold | 15m | DONE |
 
 ## Dependency Graph
 

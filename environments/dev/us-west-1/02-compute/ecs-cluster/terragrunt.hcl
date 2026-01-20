@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # ECS CLUSTER - DEV US-WEST-1
 # Fargate cluster for container workloads in us-west-1.
-# Configuration inherited from _envcommon/services/ecs-cluster.hcl.
+# Configuration inherited from _envcommon/compute/ecs-cluster.hcl.
 # ---------------------------------------------------------------------------------------------------------------------
 
 include "root" {
@@ -9,7 +9,7 @@ include "root" {
 }
 
 include "envcommon" {
-  path   = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/services/ecs-cluster.hcl"
+  path   = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/compute/ecs-cluster.hcl"
   expose = true
 }
 
@@ -21,7 +21,7 @@ locals {
 }
 
 dependency "vpc" {
-  config_path = "../../network/vpc"
+  config_path = "../../01-infra/network/vpc"
 
   mock_outputs = {
     vpc_id = "vpc-mock"
@@ -30,7 +30,7 @@ dependency "vpc" {
 }
 
 dependency "iam" {
-  config_path = "../../security/iam-roles"
+  config_path = "../../01-infra/security/iam-roles"
 
   mock_outputs = {
     iam_role_arn = "arn:aws:iam::123456789012:role/mock-role"

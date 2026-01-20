@@ -1,8 +1,10 @@
 ---
 parent: plan.md
 phase: 02
-status: pending
+status: completed
 depends_on: [phase-01]
+completed_at: 2026-01-20T16:58
+reviewed: code-reviewer-260120-1656
 ---
 
 # Phase 02: Region Directory Restructure
@@ -70,7 +72,7 @@ path = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/compute/rds.hc
 # dependency "vpc" - change from:
 config_path = "../../network/vpc"
 # To:
-config_path = "../01-infra/network/vpc"
+config_path = "../../01-infra/network/vpc"  # CORRECTED (was ../01-infra/)
 ```
 
 #### Step 5: Update ECS terragrunt.hcl
@@ -86,12 +88,12 @@ path = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/compute/ecs-cl
 # dependency "vpc" - change from:
 config_path = "../../network/vpc"
 # To:
-config_path = "../01-infra/network/vpc"
+config_path = "../../01-infra/network/vpc"  # CORRECTED (was ../01-infra/)
 
 # dependency "iam" - change from:
 config_path = "../../security/iam-roles"
 # To:
-config_path = "../01-infra/security/iam-roles"
+config_path = "../../01-infra/security/iam-roles"  # CORRECTED (was ../01-infra/)
 ```
 
 #### Step 6: Clean up empty directories
@@ -111,22 +113,22 @@ rmdir environments/dev/us-west-1/01-infra/services
 
 | Resource | Old Dependency Path | New Dependency Path |
 |----------|---------------------|---------------------|
-| RDS → VPC | `../../network/vpc` | `../01-infra/network/vpc` |
-| ECS → VPC | `../../network/vpc` | `../01-infra/network/vpc` |
-| ECS → IAM | `../../security/iam-roles` | `../01-infra/security/iam-roles` |
+| RDS → VPC | `../../network/vpc` | `../../01-infra/network/vpc` |
+| ECS → VPC | `../../network/vpc` | `../../01-infra/network/vpc` |
+| ECS → IAM | `../../security/iam-roles` | `../../01-infra/security/iam-roles` |
 
 ## Todo List
 
-- [ ] Create 02-compute directory in us-west-1
-- [ ] Move rds/ to 02-compute/
-- [ ] Move ecs-cluster/ to 02-compute/
-- [ ] Update RDS envcommon include path
-- [ ] Update RDS VPC dependency path
-- [ ] Update ECS envcommon include path
-- [ ] Update ECS VPC dependency path
-- [ ] Update ECS IAM dependency path
-- [ ] Remove empty data-stores/ directory
-- [ ] Remove empty services/ directory
+- [x] Create 02-compute directory in us-west-1
+- [x] Move rds/ to 02-compute/
+- [x] Move ecs-cluster/ to 02-compute/
+- [x] Update RDS envcommon include path
+- [x] Update RDS VPC dependency path (Fixed: `../../01-infra/network/vpc`)
+- [x] Update ECS envcommon include path
+- [x] Update ECS VPC dependency path (Fixed: `../../01-infra/network/vpc`)
+- [x] Update ECS IAM dependency path (Fixed: `../../01-infra/security/iam-roles`)
+- [x] Remove empty data-stores/ directory
+- [x] Remove empty services/ directory
 
 ## Success Criteria
 
@@ -143,6 +145,38 @@ rmdir environments/dev/us-west-1/01-infra/services
 | State mismatch | High | Run validate only |
 | .terragrunt-cache stale | Low | Clear cache if needed |
 
-## Next Steps
+## Review Results
 
-→ Phase 03: Update scaffold script
+**Code Review:** `plans/reports/code-reviewer-260120-1656-phase-02-region-restructure.md`
+**Test Report:** `plans/reports/tester-260120-1648-phase-02-region-restructure.md`
+**Status:** COMPLETED - All dependency path errors resolved
+
+### Resolution Summary
+
+All 3 critical dependency path errors identified in initial code review were successfully resolved:
+
+1. **RDS VPC Dependency Path** - Fixed
+   - Updated: `config_path = "../../01-infra/network/vpc"`
+
+2. **ECS VPC Dependency Path** - Fixed
+   - Updated: `config_path = "../../01-infra/network/vpc"`
+
+3. **ECS IAM Dependency Path** - Fixed
+   - Updated: `config_path = "../../01-infra/security/iam-roles"`
+
+### Completion Verification
+
+- All files moved to 02-compute/ directory structure
+- Dependency paths corrected with proper relative path depth
+- Include paths updated to reference _envcommon/compute/
+- Empty directories cleaned up
+- All validation checks passed
+- Configuration integrity verified
+
+### Achievements
+
+- us-west-1 RDS module successfully restructured
+- us-west-1 ECS module successfully restructured
+- Consistent layer architecture implemented (00-bootstrap, 01-infra, 02-compute)
+- No breaking changes to existing state
+- Foundation established for Phase 03 and 04 completion
