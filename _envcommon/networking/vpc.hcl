@@ -29,8 +29,8 @@ locals {
   # VPC naming
   vpc_name = "${local.account_name}-${local.environment}-vpc"
 
-  # Load from env.hcl with sensible defaults
-  vpc_cidr           = try(local.env_vars.locals.vpc_cidr, "10.0.0.0/16")
+  # Load from region.hcl (CIDR is region-specific for multi-region support)
+  vpc_cidr           = try(local.region_vars.locals.vpc_cidr, "10.0.0.0/16")
   enable_nat_gateway = try(local.env_vars.locals.enable_nat_gateway, false)
   enable_flow_log    = try(local.env_vars.locals.enable_flow_log, false)
 

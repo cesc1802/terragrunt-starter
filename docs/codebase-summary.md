@@ -23,9 +23,13 @@ terragrunt-starter/
 │   ├── networking/
 │   │   └── vpc.hcl                   # Common VPC configuration (Phase 05)
 │   ├── data-stores/
-│   │   └── rds.hcl                   # Common RDS configuration
-│   └── services/
-│       └── ecs-cluster.hcl           # Common ECS cluster configuration
+│   │   └── rds.hcl                   # Common RDS configuration (Phase 02)
+│   ├── services/
+│   │   └── ecs-cluster.hcl           # Common ECS cluster configuration (Phase 02)
+│   ├── storage/
+│   │   └── s3.hcl                    # Common S3 bucket configuration (Phase 02)
+│   └── security/
+│       └── iam-roles.hcl             # Common IAM roles configuration (Phase 02)
 │
 ├── environments/                     # Per-environment and per-region deployments
 │   ├── dev/                          # Development environment
@@ -167,15 +171,29 @@ terragrunt-starter/
 - Database subnet group created
 - Default security group locked down (no ingress/egress)
 
-**_envcommon/data-stores/rds.hcl**
-- RDS module source (terraform-aws-modules/rds/aws)
-- Database engine defaults
-- Backup and retention settings
+**_envcommon/data-stores/rds.hcl** (Phase 02)
+- RDS module source: `terraform-aws-modules/rds/aws`
+- Database engine defaults (PostgreSQL 15)
+- Instance class: t3.micro (dev) → r6g.large (prod)
+- Backup retention: 1 day (dev) → 7 days (prod)
+- Multi-AZ and deletion protection configurable per environment
 
-**_envcommon/services/ecs-cluster.hcl**
-- ECS module source (terraform-aws-modules/ecs/aws)
-- Cluster defaults
-- Logging configuration
+**_envcommon/services/ecs-cluster.hcl** (Phase 02)
+- ECS module source: `terraform-aws-modules/ecs/aws//modules/cluster`
+- Fargate capacity providers (FARGATE + FARGATE_SPOT)
+- Container Insights: Enabled for prod only (cost optimization)
+- Tags with Component, Environment, ManagedBy
+
+**_envcommon/storage/s3.hcl** (Phase 02)
+- S3 module source: `terraform-aws-modules/s3-bucket`
+- Versioning and AES256 encryption enabled
+- Public access blocking configured
+- Force destroy: Enabled for non-prod (cost optimization)
+
+**_envcommon/security/iam-roles.hcl** (Phase 02)
+- IAM module source: `terraform-aws-modules/iam//modules/iam-assumable-role`
+- Assumed by ECS tasks (trusted_role_services: ecs-tasks.amazonaws.com)
+- Configurable role names and policies per environment
 
 ### Resource Deployments
 
@@ -334,7 +352,27 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 01 (Current - Vendor Terraform Modules)
+### Phase 02 (Current - _envcommon Updates & Region-Specific CIDR)
+
+**Completed:** 2026-01-20
+
+**Key Changes:**
+1. Moved `vpc_cidr` from `env.hcl` to `region.hcl` for region-specific CIDR allocation (multi-region support)
+2. Created 4 new _envcommon modules (Phase 02):
+   - `_envcommon/data-stores/rds.hcl` - RDS configuration (v6.13.1)
+   - `_envcommon/services/ecs-cluster.hcl` - ECS cluster configuration (v5.12.1)
+   - `_envcommon/storage/s3.hcl` - S3 bucket configuration (v4.11.0)
+   - `_envcommon/security/iam-roles.hcl` - IAM roles configuration (v5.60.0)
+3. Updated `_envcommon/networking/vpc.hcl` to source vpc_cidr from region_vars
+4. Updated `environments/dev/env.hcl` to remove vpc_cidr (moved to region.hcl)
+5. Created `environments/dev/us-east-1/region.hcl` with vpc_cidr = "10.10.0.0/16"
+
+**Documentation Updates (Phase 02):**
+- Updated codebase-summary.md: Directory structure, _envcommon section, deployment modules
+- Updated system-architecture.md: Module architecture for storage and security layers (planned)
+- Updated README.md: _envcommon tree diagram to show storage/ and security/ dirs
+
+### Phase 01 (Vendor Terraform Modules)
 
 **Completed:** 2026-01-20
 

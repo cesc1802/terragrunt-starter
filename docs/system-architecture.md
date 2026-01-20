@@ -226,6 +226,67 @@ environments/{env}/us-east-1/03-services/ecs-cluster/
   └─ Creates ECS cluster, auto-scaling group, instances
 ```
 
+### Layer 4: Storage (S3)
+
+**Purpose:** Object storage for application data, logs, backups
+**Dependencies:** None
+**Outputs Used By:** ECS tasks, Lambda functions, CloudFront
+
+#### Configuration (Phase 02)
+- **Module Source:** terraform-aws-modules/s3-bucket/aws v4.11.0
+- **Versioning:** Enabled for all environments
+- **Encryption:** AES256 (SSE-S3) at rest
+- **Public Access:** Blocked for all environments
+- **Force Destroy:** Enabled for non-prod (dev/staging), disabled for UAT/prod
+
+#### Environment-Specific Settings
+
+| Setting | Dev | Staging | UAT | Prod |
+|---|---|---|---|---|
+| Bucket Naming | `{account}-dev-<purpose>` | `{account}-staging-<purpose>` | `{account}-uat-<purpose>` | `{account}-prod-<purpose>` |
+| Versioning | Enabled | Enabled | Enabled | Enabled |
+| Encryption | AES256 | AES256 | AES256 | AES256 |
+| Force Destroy | Yes | Yes | No | No |
+| MFA Delete | No | No | No | Yes |
+| Lifecycle Policies | 30 day archive | 60 day archive | 90 day archive | Retain |
+
+#### Deployment Order
+```
+_envcommon/storage/s3.hcl (common config, module source)
+  ↓
+environments/{env}/{region}/storage/s3-<purpose>/terragrunt.hcl (env overrides)
+  └─ Creates S3 bucket with versioning, encryption, public access blocking
+```
+
+### Layer 5: Security (IAM)
+
+**Purpose:** Identity and access management for ECS tasks, Lambda, and services
+**Dependencies:** None
+**Outputs Used By:** ECS tasks, EC2 instances, Lambda functions
+
+#### Configuration (Phase 02)
+- **Module Source:** terraform-aws-modules/iam/aws v5.60.0 (iam-assumable-role submodule)
+- **Assumed By:** ECS tasks (ecs-tasks.amazonaws.com)
+- **Policies:** Environment-specific attached policies
+- **Role Naming:** `{account_name}-{environment}-{service}-role`
+
+#### Environment-Specific Settings
+
+| Setting | Dev | Staging | UAT | Prod |
+|---|---|---|---|---|
+| ECS Task Role | Present | Present | Present | Present |
+| Inline Policies | Limited | Limited | Minimal | Least-privilege |
+| Trust Services | ecs-tasks.amazonaws.com | ecs-tasks.amazonaws.com | ecs-tasks.amazonaws.com | ecs-tasks.amazonaws.com |
+| Cross-Account Access | No | No | No | No |
+
+#### Deployment Order
+```
+_envcommon/security/iam-roles.hcl (common config, module source)
+  ↓
+environments/{env}/us-east-1/security/iam-{role}/terragrunt.hcl (env overrides)
+  └─ Creates IAM assumable roles for ECS tasks and services
+```
+
 ## Multi-Region Architecture (Production)
 
 ```

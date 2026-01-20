@@ -12,12 +12,12 @@ Create new `_envcommon` files for RDS, ECS, S3, and IAM modules. Move `vpc_cidr`
 
 ## Requirements
 
-- [ ] Move vpc_cidr from env.hcl to region.hcl (us-east-1)
-- [ ] Update _envcommon/networking/vpc.hcl to read from region.hcl
-- [ ] Create _envcommon/data-stores/rds.hcl
-- [ ] Create _envcommon/services/ecs-cluster.hcl
-- [ ] Create _envcommon/storage/s3.hcl
-- [ ] Create _envcommon/security/iam-roles.hcl
+- [x] Move vpc_cidr from env.hcl to region.hcl (us-east-1)
+- [x] Update _envcommon/networking/vpc.hcl to read from region.hcl
+- [x] Create _envcommon/data-stores/rds.hcl
+- [x] Create _envcommon/services/ecs-cluster.hcl
+- [x] Create _envcommon/storage/s3.hcl
+- [x] Create _envcommon/security/iam-roles.hcl
 
 ## Implementation Steps
 
@@ -315,11 +315,11 @@ mkdir -p _envcommon/security
 
 ## Success Criteria
 
-- [ ] `vpc_cidr` removed from `env.hcl`
-- [ ] `vpc_cidr` added to `region.hcl` for us-east-1
-- [ ] `_envcommon/networking/vpc.hcl` reads CIDR from `region_vars`
-- [ ] All 4 new `_envcommon` files created
-- [ ] Existing VPC still deploys correctly (`terragrunt plan` shows no changes)
+- [x] `vpc_cidr` removed from `env.hcl`
+- [x] `vpc_cidr` added to `region.hcl` for us-east-1
+- [x] `_envcommon/networking/vpc.hcl` reads CIDR from `region_vars`
+- [x] All 4 new `_envcommon` files created
+- [x] Existing VPC still deploys correctly (`terragrunt plan` shows no changes)
 
 ## Risk Assessment
 
