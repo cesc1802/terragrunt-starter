@@ -50,7 +50,7 @@ inputs = {
 
   # Tags
   tags = {
-    Component   = "services"
+    Component   = "compute"
     Environment = local.environment
     ManagedBy   = "Terragrunt"
   }

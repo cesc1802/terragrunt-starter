@@ -22,10 +22,9 @@ terragrunt-starter/
 │   │   └── tfstate-backend.hcl       # TFState backend common config (S3 + DynamoDB)
 │   ├── networking/
 │   │   └── vpc.hcl                   # Common VPC configuration (Phase 05)
-│   ├── data-stores/
-│   │   └── rds.hcl                   # Common RDS configuration (Phase 02)
-│   ├── services/
-│   │   └── ecs-cluster.hcl           # Common ECS cluster configuration (Phase 02)
+│   ├── compute/
+│   │   ├── rds.hcl                   # Common RDS configuration (Phase 02, moved Phase 06)
+│   │   └── ecs-cluster.hcl           # Common ECS cluster configuration (Phase 02, moved Phase 06)
 │   ├── storage/
 │   │   └── s3.hcl                    # Common S3 bucket configuration (Phase 02)
 │   └── security/
@@ -179,14 +178,14 @@ terragrunt-starter/
 - Database subnet group created
 - Default security group locked down (no ingress/egress)
 
-**_envcommon/data-stores/rds.hcl** (Phase 02)
+**_envcommon/compute/rds.hcl** (Phase 02, restructured Phase 06)
 - RDS module source: `terraform-aws-modules/rds/aws`
 - Database engine defaults (PostgreSQL 15)
 - Instance class: t3.micro (dev) → r6g.large (prod)
 - Backup retention: 1 day (dev) → 7 days (prod)
 - Multi-AZ and deletion protection configurable per environment
 
-**_envcommon/services/ecs-cluster.hcl** (Phase 02)
+**_envcommon/compute/ecs-cluster.hcl** (Phase 02, restructured Phase 06)
 - ECS module source: `terraform-aws-modules/ecs/aws//modules/cluster`
 - Fargate capacity providers (FARGATE + FARGATE_SPOT)
 - Container Insights: Enabled for prod only (cost optimization)
@@ -360,7 +359,26 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 05 (Current - Makefile Updates)
+### Phase 06 (Current - Compute Layer Restructure)
+
+**Completed:** 2026-01-20
+
+**Directory Restructuring:**
+1. Created `_envcommon/compute/` directory
+2. Moved `_envcommon/data-stores/rds.hcl` → `_envcommon/compute/rds.hcl`
+3. Moved `_envcommon/services/ecs-cluster.hcl` → `_envcommon/compute/ecs-cluster.hcl`
+4. Deleted `_envcommon/data-stores/` directory
+5. Deleted `_envcommon/services/` directory
+
+**Rationale:** Consolidate RDS and ECS configurations under unified compute layer for logical grouping of compute-related infrastructure components.
+
+**Documentation Updates (Phase 06):**
+- Updated README.md: _envcommon tree structure reflects new compute/ directory
+- Updated codebase-summary.md: Directory structure, Module Commons section, and Phase 06 notes
+
+**Impact:** Semantic organization improves discoverability; no functional changes to deployments.
+
+### Phase 05 (Makefile Updates)
 
 **Completed:** 2026-01-20
 

@@ -15,9 +15,8 @@ A production-ready Terragrunt project structure for managing AWS infrastructure 
 │   │   └── tfstate-backend.hcl
 │   ├── networking/
 │   │   └── vpc.hcl
-│   ├── data-stores/
-│   │   └── rds.hcl
-│   ├── services/
+│   ├── compute/
+│   │   ├── rds.hcl
 │   │   └── ecs-cluster.hcl
 │   ├── storage/
 │   │   └── s3.hcl
