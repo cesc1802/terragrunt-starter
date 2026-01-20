@@ -117,19 +117,21 @@ environments/{env}/{region}/
 ├── 00-bootstrap/
 │   └── tfstate-backend/
 │       └── terragrunt.hcl                  # State backend config
-└── 01-infra/
-    ├── network/
-    │   └── vpc/
-    │       └── terragrunt.hcl              # VPC config
-    ├── security/
-    │   └── iam-roles/
-    │       └── terragrunt.hcl              # IAM config (if selected)
-    ├── storage/
-    │   └── s3/
-    │       └── terragrunt.hcl              # S3 config (if selected)
-    └── data-stores/
-        └── rds/
-            └── terragrunt.hcl              # RDS config (if selected)
+├── 01-infra/
+│   ├── network/
+│   │   └── vpc/
+│   │       └── terragrunt.hcl              # VPC config
+│   ├── security/
+│   │   └── iam-roles/
+│   │       └── terragrunt.hcl              # IAM config (if selected)
+│   └── storage/
+│       └── s3/
+│           └── terragrunt.hcl              # S3 config (if selected)
+└── 02-compute/
+    ├── rds/
+    │   └── terragrunt.hcl                  # RDS config (if selected)
+    └── ecs-cluster/
+        └── terragrunt.hcl                  # ECS config (if selected)
 ```
 
 **region.hcl Example:**
@@ -442,15 +444,12 @@ Modules deployed in this automatic order:
 
 **1. Networking (VPC)**
    - Foundation: VPC, subnets, NAT gateways, route tables
-   - Location: `{env}/us-east-1/networking/vpc`
+   - Location: `{env}/{region}/01-infra/network/vpc`
 
-**2. Data Stores (RDS)**
-   - Dependencies: VPC (for security groups)
-   - Location: `{env}/us-east-1/data-stores/rds`
-
-**3. Services (ECS Cluster)**
-   - Dependencies: VPC, IAM roles
-   - Location: `{env}/us-east-1/services/ecs-cluster`
+**2. Compute Layer (RDS & ECS)**
+   - RDS Dependencies: VPC (for security groups)
+   - ECS Dependencies: VPC, IAM roles
+   - Location: `{env}/{region}/02-compute/rds` and `{env}/{region}/02-compute/ecs-cluster`
 
 ## Makefile Commands Reference
 
@@ -608,7 +607,7 @@ make graph ENV=dev
 **Destroy infrastructure (in reverse order):**
 ```bash
 # Destroy single module
-make destroy TARGET=dev/us-east-1/services/ecs-cluster
+make destroy TARGET=dev/us-east-1/02-compute/ecs-cluster
 
 # Destroy entire environment (automatic reverse order)
 make destroy-all ENV=dev REGION=us-east-1

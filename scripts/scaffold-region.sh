@@ -398,9 +398,10 @@ scaffold_region() {
 
     log_info "Creating directory structure..."
 
-    # Create base directories (matching existing us-east-1 structure)
+    # Create base directories
     mkdir -p "$REGION_DIR/00-bootstrap/tfstate-backend"
     mkdir -p "$REGION_DIR/01-infra/network/vpc"
+    mkdir -p "$REGION_DIR/02-compute"
 
     # Create region.hcl
     create_region_hcl "$REGION_DIR"
@@ -428,22 +429,22 @@ scaffold_region() {
         log_success "Created 01-infra/storage/s3"
     fi
 
-    # Create RDS (depends on VPC)
+    # Create RDS (depends on VPC) - in 02-compute layer
     if [ "$INCLUDE_RDS" = "y" ]; then
-        mkdir -p "$REGION_DIR/01-infra/data-stores/rds"
-        create_module_terragrunt "$REGION_DIR/01-infra/data-stores/rds" "data-stores/rds.hcl" "network::vpc"
-        log_success "Created 01-infra/data-stores/rds"
+        mkdir -p "$REGION_DIR/02-compute/rds"
+        create_module_terragrunt "$REGION_DIR/02-compute/rds" "compute/rds.hcl" "01-infra::network::vpc"
+        log_success "Created 02-compute/rds"
     fi
 
-    # Create ECS (depends on VPC, IAM)
+    # Create ECS (depends on VPC, IAM) - in 02-compute layer
     if [ "$INCLUDE_ECS" = "y" ]; then
-        mkdir -p "$REGION_DIR/01-infra/services/ecs-cluster"
-        local ecs_deps="network::vpc"
+        mkdir -p "$REGION_DIR/02-compute/ecs-cluster"
+        local ecs_deps="01-infra::network::vpc"
         if [ "$INCLUDE_IAM" = "y" ]; then
-            ecs_deps="${ecs_deps},security::iam-roles"
+            ecs_deps="${ecs_deps},01-infra::security::iam-roles"
         fi
-        create_module_terragrunt "$REGION_DIR/01-infra/services/ecs-cluster" "services/ecs-cluster.hcl" "$ecs_deps"
-        log_success "Created 01-infra/services/ecs-cluster"
+        create_module_terragrunt "$REGION_DIR/02-compute/ecs-cluster" "compute/ecs-cluster.hcl" "$ecs_deps"
+        log_success "Created 02-compute/ecs-cluster"
     fi
 
     # Clear trap on success
@@ -455,8 +456,9 @@ scaffold_region() {
     log_info "Next steps:"
     echo "  1. Review generated files in environments/$env/$AWS_REGION/"
     echo "  2. Bootstrap state (if needed): Update bootstrap-tfstate.sh for this region"
-    echo "  3. Deploy VPC: make apply TARGET=environments/$env/$AWS_REGION/01-infra/network/vpc"
-    echo "  4. Deploy other modules in dependency order"
+    echo "  3. Deploy 01-infra: make apply TARGET=environments/$env/$AWS_REGION/01-infra/network/vpc"
+    echo "  4. Deploy 02-compute: make apply TARGET=environments/$env/$AWS_REGION/02-compute/rds"
+    echo "  5. Deploy other modules in dependency order"
 }
 
 # =============================================================================

@@ -28,9 +28,11 @@ A production-ready Terragrunt project structure for managing AWS infrastructure 
 │   │   ├── env.hcl
 │   │   └── us-east-1/
 │   │       ├── region.hcl
-│   │       ├── networking/vpc/
-│   │       ├── data-stores/rds/
-│   │       └── services/ecs-cluster/
+│   │       ├── 01-infra/
+│   │       │   └── network/vpc/
+│   │       └── 02-compute/
+│   │           ├── rds/
+│   │           └── ecs-cluster/
 │   │
 │   ├── staging/                # 🧪 Staging environment
 │   │   └── ...
@@ -172,9 +174,9 @@ make apply-all ENV=dev REGION=us-east-1
 Terragrunt automatically handles cross-module dependencies:
 
 ```hcl
-# In services/ecs-cluster/terragrunt.hcl
+# In 02-compute/ecs-cluster/terragrunt.hcl
 dependency "vpc" {
-  config_path = "../../networking/vpc"
+  config_path = "../../01-infra/network/vpc"
 }
 
 inputs = {

@@ -41,10 +41,10 @@ terragrunt-starter/
 │   │   │   ├── 01-infra/
 │   │   │   │   ├── network/vpc/terragrunt.hcl  # Dev VPC (Phase 05)
 │   │   │   │   ├── security/iam-roles/terragrunt.hcl
-│   │   │   │   ├── storage/s3/terragrunt.hcl
-│   │   │   │   └── data-stores/rds/terragrunt.hcl
-│   │   │   └── services/
-│   │   │       └── ecs-cluster/terragrunt.hcl
+│   │   │   │   └── storage/s3/terragrunt.hcl
+│   │   │   └── 02-compute/
+│   │   │       ├── rds/terragrunt.hcl          # RDS (Phase 02 restructure)
+│   │   │       └── ecs-cluster/terragrunt.hcl  # ECS (Phase 02 restructure)
 │   │   └── us-west-1/
 │   │       ├── region.hcl            # Dev region configuration (CIDR: 10.11.0.0/16, AZs: a,b) - Phase 04
 │   │       ├── 00-bootstrap/
@@ -61,34 +61,42 @@ terragrunt-starter/
 │   │   ├── env.hcl                   # Staging environment variables (small instance, no deletion protection)
 │   │   └── us-east-1/
 │   │       ├── region.hcl
-│   │       ├── networking/vpc/terragrunt.hcl
-│   │       ├── data-stores/rds/terragrunt.hcl
-│   │       └── services/ecs-cluster/terragrunt.hcl
+│   │       ├── 01-infra/
+│   │       │   └── network/vpc/terragrunt.hcl
+│   │       └── 02-compute/
+│   │           ├── rds/terragrunt.hcl
+│   │           └── ecs-cluster/terragrunt.hcl
 │   │
 │   ├── uat/                          # UAT environment (NEW in Phase 01)
 │   │   ├── env.hcl                   # UAT environment variables (medium instance, deletion protection enabled)
 │   │   └── us-east-1/
 │   │       ├── region.hcl            # UAT region configuration
-│   │       ├── bootstrap/
+│   │       ├── 00-bootstrap/
 │   │       │   └── tfstate-backend/
 │   │       │       └── terragrunt.hcl  # UAT state backend (NEW in Phase 03)
-│   │       └── (networking, data-stores, services to be added)
+│   │       └── (01-infra, 02-compute to be added)
 │   │
 │   └── prod/                         # Production environment
 │       ├── env.hcl                   # Prod environment variables (large instance, deletion protection, multi-AZ)
 │       ├── us-east-1/                # Primary region
 │       │   ├── region.hcl
-│       │   ├── bootstrap/
+│       │   ├── 00-bootstrap/
 │       │   │   └── tfstate-backend/
 │       │   │       └── terragrunt.hcl  # Prod state backend (NEW in Phase 03)
-│       │   ├── networking/vpc/terragrunt.hcl
-│       │   ├── data-stores/rds/terragrunt.hcl
-│       │   └── services/ecs-cluster/terragrunt.hcl
+│       │   ├── 01-infra/
+│       │   │   └── network/vpc/terragrunt.hcl
+│       │   └── 02-compute/
+│       │       ├── rds/terragrunt.hcl
+│       │       └── ecs-cluster/terragrunt.hcl
 │       └── eu-west-1/                # Secondary region (disaster recovery)
 │           ├── region.hcl
-│           ├── networking/vpc/terragrunt.hcl
-│           ├── data-stores/rds/terragrunt.hcl
-│           └── services/ecs-cluster/terragrunt.hcl
+│           ├── 00-bootstrap/
+│           │   └── tfstate-backend/terragrunt.hcl
+│           ├── 01-infra/
+│           │   └── network/vpc/terragrunt.hcl
+│           └── 02-compute/
+│               ├── rds/terragrunt.hcl
+│               └── ecs-cluster/terragrunt.hcl
 │
 ├── .claude/                          # Claude project configuration and scripts
 │   ├── hooks/                        # Git hooks and validation scripts
@@ -276,16 +284,15 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
   - Dev Config: vpc_cidr=10.10.0.0/16, NAT disabled, Flow Logs disabled
   - Outputs: vpc_id, public_subnet_ids, private_subnet_ids, database_subnet_ids
 
-### Data Stores
+### Compute Layer
 - **RDS** (Relational Database Service) - Module available (v6.13.1)
-  - Location: `environments/{env}/{region}/data-stores/rds/`
+  - Location: `environments/{env}/{region}/02-compute/rds/`
   - Provides: PostgreSQL/MySQL database instances
   - Outputs: rds_endpoint, security_group_id
   - Dependencies: VPC (for security groups)
 
-### Services
 - **ECS Cluster** (Elastic Container Service) - Module available (v5.12.1)
-  - Location: `environments/{env}/{region}/services/ecs-cluster/`
+  - Location: `environments/{env}/{region}/02-compute/ecs-cluster/`
   - Provides: Container orchestration platform
   - Outputs: cluster_id, cluster_arn
   - Dependencies: VPC, IAM roles
@@ -481,8 +488,8 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 **Key Changes:**
 1. Moved `vpc_cidr` from `env.hcl` to `region.hcl` for region-specific CIDR allocation (multi-region support)
 2. Created 4 new _envcommon modules (Phase 02):
-   - `_envcommon/data-stores/rds.hcl` - RDS configuration (v6.13.1)
-   - `_envcommon/services/ecs-cluster.hcl` - ECS cluster configuration (v5.12.1)
+   - `_envcommon/compute/rds.hcl` - RDS configuration (v6.13.1) [moved Phase 06]
+   - `_envcommon/compute/ecs-cluster.hcl` - ECS cluster configuration (v5.12.1) [moved Phase 06]
    - `_envcommon/storage/s3.hcl` - S3 bucket configuration (v4.11.0)
    - `_envcommon/security/iam-roles.hcl` - IAM roles configuration (v5.60.0)
 3. Updated `_envcommon/networking/vpc.hcl` to source vpc_cidr from region_vars
@@ -493,6 +500,11 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 - Updated codebase-summary.md: Directory structure, _envcommon section, deployment modules
 - Updated system-architecture.md: Module architecture for storage and security layers (planned)
 - Updated README.md: _envcommon tree diagram to show storage/ and security/ dirs
+
+**Phase 06 (Compute Layer Restructure):**
+- Moved `_envcommon/data-stores/rds.hcl` → `_envcommon/compute/rds.hcl`
+- Moved `_envcommon/services/ecs-cluster.hcl` → `_envcommon/compute/ecs-cluster.hcl`
+- Environment deployments now use `02-compute/rds/` and `02-compute/ecs-cluster/` paths
 
 ### Phase 01 (Vendor Terraform Modules)
 

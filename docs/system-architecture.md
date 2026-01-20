@@ -190,19 +190,32 @@ environments/{env}/us-east-1/01-infra/network/vpc/terragrunt.hcl (env-specific o
 
 #### Deployment Order
 ```
-environments/{env}/us-east-1/01-infra/network/vpc/
-  ↓ (requires VPC security groups, subnets)
-environments/{env}/us-east-1/02-data/rds/
-  └─ Creates RDS instance with security group rules
+_envcommon/networking/vpc.hcl (common config + cidrsubnet() calculations)
+  ↓
+environments/{env}/{region}/01-infra/network/vpc/terragrunt.hcl (env-specific overrides)
+  └─ Creates VPC with calculated subnets, route tables, DNS, optional NAT/Flow Logs
 ```
 
-### Layer 3: Services (ECS Cluster)
+**Phase 05 Status:** Dev VPC deployed (10.10.0.0/16, NAT/Flow Logs disabled)
 
-**Purpose:** Container orchestration for applications
-**Dependencies:** VPC, IAM roles
-**Outputs Used By:** Load balancers, other services
+### Layer 2: Compute Layer (RDS & ECS)
 
-#### Configuration
+**Purpose:** Database and container orchestration for applications
+**Dependencies:** VPC, IAM roles (for ECS)
+**Outputs Used By:** Application services, load balancers
+
+#### RDS (Relational Database Service)
+
+**Configuration**
+- **Module Source:** terraform-aws-modules/rds/aws
+- **Engine:** PostgreSQL/MySQL (configurable)
+- **Instance Class:** t3.micro (dev) → r6g.large (prod)
+- **Storage:** 20GB (dev) → 100GB+ (prod)
+- **Backup Retention:** 7 days (dev) → 30 days (prod)
+
+#### ECS Cluster (Elastic Container Service)
+
+**Configuration**
 - **Module Source:** terraform-aws-modules/ecs/aws
 - **Launch Type:** EC2 (requires auto-scaling group)
 - **Logging:** CloudWatch Logs (all envs), Container Insights (prod only)
@@ -212,18 +225,19 @@ environments/{env}/us-east-1/02-data/rds/
 
 | Setting | Dev | Staging | UAT | Prod |
 |---|---|---|---|---|
-| Instance Count | 1-2 | 2 | 2-3 | 3+ |
-| Instance Type | t3.micro | t3.small | t3.medium | m6g.large |
+| RDS Instance | t3.micro | t3.small | t3.small | r6g.large |
+| RDS Storage | 20GB | 30GB | 50GB | 100GB |
+| ECS Instance Count | 1-2 | 2 | 2-3 | 3+ |
+| ECS Instance Type | t3.micro | t3.small | t3.medium | m6g.large |
 | Container Insights | Disabled | Disabled | Disabled | Enabled |
-| Logging | CloudWatch | CloudWatch | CloudWatch | CloudWatch + Splunk |
-| Placement Strategy | Any | Any | Any | Spread (AZ diversity) |
 
 #### Deployment Order
 ```
-environments/{env}/us-east-1/01-infra/network/vpc/
-  ↓ (requires VPC subnets, security groups)
-environments/{env}/us-east-1/03-services/ecs-cluster/
-  └─ Creates ECS cluster, auto-scaling group, instances
+_envcommon/compute/rds.hcl & ecs-cluster.hcl (common config)
+  ↓
+environments/{env}/{region}/02-compute/rds/terragrunt.hcl (depends on VPC)
+environments/{env}/{region}/02-compute/ecs-cluster/terragrunt.hcl (depends on VPC + IAM)
+  └─ Creates RDS instance + ECS cluster with auto-scaling group
 ```
 
 ### Layer 4: Storage (S3)
