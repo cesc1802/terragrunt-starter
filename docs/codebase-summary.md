@@ -49,12 +49,13 @@ terragrunt-starter/
 │   │       ├── region.hcl            # Dev region configuration (CIDR: 10.11.0.0/16, AZs: a,b) - Phase 04
 │   │       ├── 00-bootstrap/
 │   │       │   └── tfstate-backend/terragrunt.hcl  # Bootstrap for us-west-1 (Phase 04)
-│   │       └── 01-infra/
-│   │           ├── network/vpc/terragrunt.hcl     # VPC for us-west-1 (Phase 04)
-│   │           ├── security/iam-roles/terragrunt.hcl
-│   │           ├── storage/s3/terragrunt.hcl
-│   │           ├── data-stores/rds/terragrunt.hcl
-│   │           └── services/ecs-cluster/terragrunt.hcl
+│   │       ├── 01-infra/
+│   │       │   ├── network/vpc/terragrunt.hcl     # VPC for us-west-1 (Phase 04)
+│   │       │   ├── security/iam-roles/terragrunt.hcl
+│   │       │   └── storage/s3/terragrunt.hcl
+│   │       └── 02-compute/
+│   │           ├── rds/terragrunt.hcl              # RDS for us-west-1 (Phase 02 restructure)
+│   │           └── ecs-cluster/terragrunt.hcl      # ECS for us-west-1 (Phase 02 restructure)
 │   │
 │   ├── staging/                     # Staging environment
 │   │   ├── env.hcl                   # Staging environment variables (small instance, no deletion protection)
@@ -414,8 +415,8 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 3. `environments/dev/us-west-1/01-infra/network/vpc/terragrunt.hcl` - VPC deployment
 4. `environments/dev/us-west-1/01-infra/security/iam-roles/terragrunt.hcl` - IAM roles
 5. `environments/dev/us-west-1/01-infra/storage/s3/terragrunt.hcl` - S3 bucket
-6. `environments/dev/us-west-1/01-infra/data-stores/rds/terragrunt.hcl` - RDS instance
-7. `environments/dev/us-west-1/01-infra/services/ecs-cluster/terragrunt.hcl` - ECS cluster
+6. `environments/dev/us-west-1/02-compute/rds/terragrunt.hcl` - RDS instance
+7. `environments/dev/us-west-1/02-compute/ecs-cluster/terragrunt.hcl` - ECS cluster
 
 **Key Features:**
 - Non-overlapping CIDR: 10.11.0.0/16 (vs us-east-1's 10.10.0.0/16)
@@ -465,8 +466,8 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 - `{env}/{region}/01-infra/network/vpc/terragrunt.hcl` - VPC module
 - `{env}/{region}/01-infra/security/iam-roles/terragrunt.hcl` - IAM module (optional)
 - `{env}/{region}/01-infra/storage/s3/terragrunt.hcl` - S3 module (optional)
-- `{env}/{region}/01-infra/data-stores/rds/terragrunt.hcl` - RDS module (optional)
-- `{env}/{region}/01-infra/services/ecs-cluster/terragrunt.hcl` - ECS module (optional)
+- `{env}/{region}/02-compute/rds/terragrunt.hcl` - RDS module (optional)
+- `{env}/{region}/02-compute/ecs-cluster/terragrunt.hcl` - ECS module (optional)
 
 **Documentation Updates (Phase 03):**
 - Updated README.md: Added Step 2 (Scaffold Region Configuration)
