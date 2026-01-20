@@ -1,5 +1,24 @@
 # System Architecture
 
+## Vendored Terraform Modules (Phase 01)
+
+All infrastructure-as-code leverages official Terraform AWS modules via git subtree for centralized management and versioning.
+
+| Module | Version | Provider | Purpose |
+|--------|---------|----------|---------|
+| terraform-aws-vpc | 5.17.0 | terraform-aws-modules | Networking (VPC, subnets, routing) |
+| terraform-aws-rds | 6.13.1 | terraform-aws-modules | Relational databases |
+| terraform-aws-ecs | 5.12.1 | terraform-aws-modules | Container orchestration |
+| terraform-aws-s3-bucket | 4.11.0 | terraform-aws-modules | Object storage |
+| terraform-aws-iam | 5.60.0 | terraform-aws-modules | Identity & access control |
+| terraform-aws-tfstate-backend | 1.5.0 | cloudposse | Remote state (S3 + DynamoDB) |
+
+**Module Location:** `/Users/thuocnguyen/Documents/personal-workspace/terragrunt-starter/modules/`
+
+**Update Process:** Git subtree fetch → review → squash merge. See `modules/README.md` for git remotes and update SLA.
+
+---
+
 ## High-Level Architecture Overview
 
 ```
