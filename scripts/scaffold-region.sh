@@ -1,29 +1,3 @@
-# Phase 03: Create Scaffold Script
-
-## Context
-
-Create `scripts/scaffold-region.sh` to automate region setup with interactive prompts. Follow patterns from existing `scripts/bootstrap-tfstate.sh`.
-
-## Overview
-
-Script collects configuration via prompts, validates inputs, and generates:
-- `region.hcl` with CIDR, AZs
-- Directory structure for all modules
-- `terragrunt.hcl` files referencing `_envcommon`
-
-## Requirements
-
-- [x] Interactive prompts for region configuration
-- [~] CIDR and region validation (weak overlap detection, octect validation missing)
-- [x] Template generation using heredocs
-- [~] Error handling with cleanup on failure (missing cleanup trap)
-- [~] POSIX-compatible bash (variable scope bug breaks functionality)
-
-## Implementation Steps
-
-### Step 1: Create scripts/scaffold-region.sh
-
-```bash
 #!/bin/bash
 # =============================================================================
 # REGION SCAFFOLD SCRIPT
@@ -49,6 +23,17 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Global variables for collected inputs (set by collect_inputs, used by scaffold_region)
+AWS_REGION=""
+VPC_CIDR=""
+AZS=""
+ENABLE_NAT=""
+INCLUDE_RDS=""
+INCLUDE_ECS=""
+INCLUDE_S3=""
+INCLUDE_IAM=""
+REGION_DIR=""
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -72,9 +57,18 @@ EOF
     exit 1
 }
 
+# Cleanup handler for failed scaffolds
+cleanup_on_failure() {
+    if [ -n "$REGION_DIR" ] && [ -d "$REGION_DIR" ]; then
+        log_warn "Cleaning up incomplete scaffold at $REGION_DIR"
+        rm -rf "$REGION_DIR"
+    fi
+}
+
 validate_region() {
     local region="$1"
-    local valid_regions="us-east-1 us-east-2 us-west-1 us-west-2 eu-west-1 eu-west-2 eu-central-1 ap-southeast-1 ap-northeast-1"
+    # Common AWS regions - extend as needed
+    local valid_regions="us-east-1 us-east-2 us-west-1 us-west-2 eu-west-1 eu-west-2 eu-west-3 eu-central-1 eu-north-1 ap-southeast-1 ap-southeast-2 ap-northeast-1 ap-northeast-2 ap-south-1 sa-east-1 ca-central-1"
     if echo "$valid_regions" | grep -qw "$region"; then
         return 0
     else
@@ -86,19 +80,76 @@ validate_region() {
 
 validate_cidr() {
     local cidr="$1"
-    # Basic CIDR format validation
-    if echo "$cidr" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'; then
-        local prefix="${cidr#*/}"
-        if [ "$prefix" -ge 16 ] && [ "$prefix" -le 24 ]; then
-            return 0
-        else
-            log_error "CIDR prefix must be /16 to /24"
-            return 1
-        fi
-    else
+    # Validate CIDR format
+    if ! echo "$cidr" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'; then
         log_error "Invalid CIDR format. Expected: X.X.X.X/Y"
         return 1
     fi
+
+    # Validate each octet is 0-255
+    local ip_part="${cidr%/*}"
+    IFS='.' read -ra octets <<< "$ip_part"
+    for octet in "${octets[@]}"; do
+        if [ "$octet" -lt 0 ] || [ "$octet" -gt 255 ]; then
+            log_error "Invalid IP octet: $octet (must be 0-255)"
+            return 1
+        fi
+    done
+
+    # Validate prefix length
+    local prefix="${cidr#*/}"
+    if [ "$prefix" -lt 16 ] || [ "$prefix" -gt 24 ]; then
+        log_error "CIDR prefix must be /16 to /24"
+        return 1
+    fi
+
+    return 0
+}
+
+# Convert IP to integer for CIDR overlap comparison
+ip_to_int() {
+    local ip="$1"
+    local a b c d
+    IFS='.' read -r a b c d <<< "$ip"
+    echo $(( (a << 24) + (b << 16) + (c << 8) + d ))
+}
+
+# Check if two CIDR ranges overlap
+cidrs_overlap() {
+    local cidr1="$1"
+    local cidr2="$2"
+
+    local ip1="${cidr1%/*}"
+    local prefix1="${cidr1#*/}"
+    local ip2="${cidr2%/*}"
+    local prefix2="${cidr2#*/}"
+
+    local int1 int2
+    int1=$(ip_to_int "$ip1")
+    int2=$(ip_to_int "$ip2")
+
+    # Calculate network masks
+    local mask1=$(( 0xFFFFFFFF << (32 - prefix1) & 0xFFFFFFFF ))
+    local mask2=$(( 0xFFFFFFFF << (32 - prefix2) & 0xFFFFFFFF ))
+
+    # Get network addresses
+    local net1=$(( int1 & mask1 ))
+    local net2=$(( int2 & mask2 ))
+
+    # Use the smaller prefix (larger network) as the common mask
+    local common_mask
+    if [ "$prefix1" -le "$prefix2" ]; then
+        common_mask=$mask1
+    else
+        common_mask=$mask2
+    fi
+
+    # Networks overlap if they share the same network address when masked
+    # with the larger network's (smaller prefix) mask
+    if [ $(( net1 & common_mask )) -eq $(( net2 & common_mask )) ]; then
+        return 0  # Overlap detected
+    fi
+    return 1  # No overlap
 }
 
 check_cidr_conflict() {
@@ -111,10 +162,51 @@ check_cidr_conflict() {
         if [ -f "$region_file" ]; then
             local existing_cidr
             existing_cidr=$(grep 'vpc_cidr' "$region_file" 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || true)
-            if [ -n "$existing_cidr" ] && [ "$existing_cidr" = "$new_cidr" ]; then
-                log_error "CIDR $new_cidr already used in $(dirname "$region_file")"
-                return 1
+            if [ -n "$existing_cidr" ]; then
+                # Check exact match
+                if [ "$existing_cidr" = "$new_cidr" ]; then
+                    log_error "CIDR $new_cidr already used in $(dirname "$region_file")"
+                    return 1
+                fi
+                # Check CIDR overlap using proper network math
+                if cidrs_overlap "$new_cidr" "$existing_cidr"; then
+                    log_warn "CIDR $new_cidr overlaps with $existing_cidr in $(dirname "$region_file")"
+                    read -p "Continue anyway? (y/n): " continue_overlap
+                    if [ "$continue_overlap" != "y" ]; then
+                        return 1
+                    fi
+                fi
             fi
+        fi
+    done
+    return 0
+}
+
+# Sanitize input - remove special characters
+sanitize_input() {
+    local input="$1"
+    # Remove leading/trailing whitespace, replace special chars
+    echo "$input" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -cd '[:alnum:].,_-/'
+}
+
+# Validate availability zones format
+validate_azs() {
+    local azs="$1"
+    local region="$2"
+
+    # Check if empty
+    if [ -z "$azs" ]; then
+        log_error "Availability zones cannot be empty"
+        return 1
+    fi
+
+    # Validate each AZ follows pattern: region + letter (a-z)
+    IFS=',' read -ra az_array <<< "$azs"
+    for az in "${az_array[@]}"; do
+        # AZ must start with region name and end with a single letter
+        if ! echo "$az" | grep -qE "^${region}[a-z]$"; then
+            log_error "Invalid AZ format: $az (expected: ${region}[a-z])"
+            return 1
         fi
     done
     return 0
@@ -133,22 +225,24 @@ collect_inputs() {
 
     # Region
     while true; do
-        read -p "AWS Region (e.g., us-west-1): " AWS_REGION
+        read -p "AWS Region (e.g., us-west-1): " input_region
+        AWS_REGION=$(sanitize_input "$input_region")
         if validate_region "$AWS_REGION"; then
             break
         fi
     done
 
     # Check if region already exists
-    local region_dir="$PROJECT_ROOT/environments/$env/$AWS_REGION"
-    if [ -d "$region_dir" ]; then
+    REGION_DIR="$PROJECT_ROOT/environments/$env/$AWS_REGION"
+    if [ -d "$REGION_DIR" ]; then
         log_error "Region $AWS_REGION already exists in $env"
         exit 1
     fi
 
     # VPC CIDR
     while true; do
-        read -p "VPC CIDR (e.g., 10.11.0.0/16): " VPC_CIDR
+        read -p "VPC CIDR (e.g., 10.11.0.0/16): " input_cidr
+        VPC_CIDR=$(sanitize_input "$input_cidr")
         if validate_cidr "$VPC_CIDR" && check_cidr_conflict "$VPC_CIDR" "$env"; then
             break
         fi
@@ -156,10 +250,15 @@ collect_inputs() {
 
     # Availability Zones
     local default_azs="${AWS_REGION}a,${AWS_REGION}b"
-    read -p "Availability Zones (default: $default_azs): " input_azs
-    AZS="${input_azs:-$default_azs}"
+    while true; do
+        read -p "Availability Zones (default: $default_azs): " input_azs
+        AZS=$(sanitize_input "${input_azs:-$default_azs}")
+        if validate_azs "$AZS" "$AWS_REGION"; then
+            break
+        fi
+    done
 
-    # NAT Gateway
+    # NAT Gateway (collected for future use / summary display)
     read -p "Enable NAT Gateway? (y/n, default: n): " enable_nat
     ENABLE_NAT="${enable_nat:-n}"
 
@@ -188,7 +287,7 @@ collect_inputs() {
     echo "  Region:       $AWS_REGION"
     echo "  VPC CIDR:     $VPC_CIDR"
     echo "  AZs:          $AZS"
-    echo "  NAT Gateway:  $ENABLE_NAT"
+    echo "  NAT Gateway:  $ENABLE_NAT (configure in _envcommon/networking/vpc.hcl)"
     echo "  RDS:          $INCLUDE_RDS"
     echo "  ECS:          $INCLUDE_ECS"
     echo "  S3:           $INCLUDE_S3"
@@ -217,18 +316,26 @@ create_region_hcl() {
     done
     az_list="${az_list%, }"
 
+    local region_upper
+    region_upper=$(echo "$AWS_REGION" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+
     cat > "$region_dir/region.hcl" << EOF
 # ---------------------------------------------------------------------------------------------------------------------
-# REGION-LEVEL VARIABLES - ${AWS_REGION^^}
+# REGION-LEVEL VARIABLES - ${region_upper}
 # These variables apply to all resources in this region.
 # ---------------------------------------------------------------------------------------------------------------------
 
 locals {
   aws_region = "$AWS_REGION"
-  azs        = [$az_list]
 
-  # VPC CIDR for this region
+  # Availability zones for this region
+  azs = [$az_list]
+
+  # VPC CIDR for this region (moved from env.hcl for region-specific allocation)
   vpc_cidr = "$VPC_CIDR"
+
+  # Region-specific settings (optional)
+  # ami_id = "ami-xxxxxxxxx"  # Region-specific AMI if needed
 }
 EOF
 }
@@ -244,9 +351,15 @@ create_module_terragrunt() {
     if [ -n "$dependencies" ]; then
         IFS=',' read -ra dep_array <<< "$dependencies"
         for dep in "${dep_array[@]}"; do
+            # Dependencies use :: as separator (e.g., network::vpc -> network/vpc)
+            # This avoids conflicts with module names containing underscores/hyphens
+            local dep_path
+            dep_path=$(echo "$dep" | tr ':' '/')
+            # Clean up double slashes from :: conversion
+            dep_path=$(echo "$dep_path" | sed 's|//|/|g')
             dep_block="${dep_block}
-dependency \"$dep\" {
-  config_path = \"../../${dep//_/\/}\"
+dependency \"$(echo "$dep" | tr ':' '_')\" {
+  config_path = \"../../${dep_path}\"
 }
 "
         done
@@ -279,64 +392,69 @@ EOF
 
 scaffold_region() {
     local env="$1"
-    local region_dir="$PROJECT_ROOT/environments/$env/$AWS_REGION"
+
+    # Set trap for cleanup on failure
+    trap cleanup_on_failure EXIT
 
     log_info "Creating directory structure..."
 
-    # Create base directories
-    mkdir -p "$region_dir/00-bootstrap/tfstate-backend"
-    mkdir -p "$region_dir/01-infra/network/vpc"
+    # Create base directories (matching existing us-east-1 structure)
+    mkdir -p "$REGION_DIR/00-bootstrap/tfstate-backend"
+    mkdir -p "$REGION_DIR/01-infra/network/vpc"
 
     # Create region.hcl
-    create_region_hcl "$region_dir"
+    create_region_hcl "$REGION_DIR"
     log_success "Created region.hcl"
 
     # Create bootstrap module
-    create_module_terragrunt "$region_dir/00-bootstrap/tfstate-backend" "bootstrap/tfstate-backend.hcl" ""
-    log_success "Created bootstrap/tfstate-backend"
+    create_module_terragrunt "$REGION_DIR/00-bootstrap/tfstate-backend" "bootstrap/tfstate-backend.hcl" ""
+    log_success "Created 00-bootstrap/tfstate-backend"
 
     # Create VPC
-    create_module_terragrunt "$region_dir/01-infra/network/vpc" "networking/vpc.hcl" ""
-    log_success "Created network/vpc"
+    create_module_terragrunt "$REGION_DIR/01-infra/network/vpc" "networking/vpc.hcl" ""
+    log_success "Created 01-infra/network/vpc"
 
     # Create IAM (no dependencies)
     if [ "$INCLUDE_IAM" = "y" ]; then
-        mkdir -p "$region_dir/01-infra/security/iam-roles"
-        create_module_terragrunt "$region_dir/01-infra/security/iam-roles" "security/iam-roles.hcl" ""
-        log_success "Created security/iam-roles"
+        mkdir -p "$REGION_DIR/01-infra/security/iam-roles"
+        create_module_terragrunt "$REGION_DIR/01-infra/security/iam-roles" "security/iam-roles.hcl" ""
+        log_success "Created 01-infra/security/iam-roles"
     fi
 
     # Create S3 (no dependencies)
     if [ "$INCLUDE_S3" = "y" ]; then
-        mkdir -p "$region_dir/01-infra/storage/s3"
-        create_module_terragrunt "$region_dir/01-infra/storage/s3" "storage/s3.hcl" ""
-        log_success "Created storage/s3"
+        mkdir -p "$REGION_DIR/01-infra/storage/s3"
+        create_module_terragrunt "$REGION_DIR/01-infra/storage/s3" "storage/s3.hcl" ""
+        log_success "Created 01-infra/storage/s3"
     fi
 
     # Create RDS (depends on VPC)
     if [ "$INCLUDE_RDS" = "y" ]; then
-        mkdir -p "$region_dir/01-infra/data-stores/rds"
-        create_module_terragrunt "$region_dir/01-infra/data-stores/rds" "data-stores/rds.hcl" "network_vpc"
-        log_success "Created data-stores/rds"
+        mkdir -p "$REGION_DIR/01-infra/data-stores/rds"
+        create_module_terragrunt "$REGION_DIR/01-infra/data-stores/rds" "data-stores/rds.hcl" "network::vpc"
+        log_success "Created 01-infra/data-stores/rds"
     fi
 
     # Create ECS (depends on VPC, IAM)
     if [ "$INCLUDE_ECS" = "y" ]; then
-        mkdir -p "$region_dir/01-infra/services/ecs-cluster"
-        local ecs_deps="network_vpc"
+        mkdir -p "$REGION_DIR/01-infra/services/ecs-cluster"
+        local ecs_deps="network::vpc"
         if [ "$INCLUDE_IAM" = "y" ]; then
-            ecs_deps="${ecs_deps},security_iam-roles"
+            ecs_deps="${ecs_deps},security::iam-roles"
         fi
-        create_module_terragrunt "$region_dir/01-infra/services/ecs-cluster" "services/ecs-cluster.hcl" "$ecs_deps"
-        log_success "Created services/ecs-cluster"
+        create_module_terragrunt "$REGION_DIR/01-infra/services/ecs-cluster" "services/ecs-cluster.hcl" "$ecs_deps"
+        log_success "Created 01-infra/services/ecs-cluster"
     fi
+
+    # Clear trap on success
+    trap - EXIT
 
     echo ""
     log_success "Scaffold complete for $env/$AWS_REGION"
     echo ""
     log_info "Next steps:"
     echo "  1. Review generated files in environments/$env/$AWS_REGION/"
-    echo "  2. Run: make bootstrap ENV=$env (if new environment)"
+    echo "  2. Bootstrap state (if needed): Update bootstrap-tfstate.sh for this region"
     echo "  3. Deploy VPC: make apply TARGET=environments/$env/$AWS_REGION/01-infra/network/vpc"
     echo "  4. Deploy other modules in dependency order"
 }
@@ -388,79 +506,3 @@ main() {
 }
 
 main "$@"
-```
-
-### Step 2: Make Script Executable
-
-```bash
-chmod +x scripts/scaffold-region.sh
-```
-
-### Step 3: Test Script
-
-```bash
-# Dry run with dev environment
-./scripts/scaffold-region.sh dev
-
-# Follow prompts:
-# - Region: us-west-1
-# - CIDR: 10.11.0.0/16
-# - AZs: us-west-1a,us-west-1b
-# - NAT: n
-# - RDS: y
-# - ECS: y
-# - S3: y
-# - IAM: y
-```
-
-## Success Criteria
-
-- [~] Script runs without errors (has critical bugs - see code review)
-- [x] Validates region against known AWS regions
-- [~] Validates CIDR format and prefix range (octect validation missing)
-- [~] Checks for CIDR conflicts with existing regions (only exact match, no overlap detection)
-- [x] Generates correct directory structure
-- [x] Generates valid HCL files
-- [x] Shows clear next steps
-
-## Code Review Results
-
-**Review Date**: 2026-01-20
-**Reviewer**: code-reviewer agent
-**Report**: `/plans/reports/code-reviewer-260120-1124-phase-03-scaffold-script.md`
-**Score**: 7.5/10
-
-### Critical Issues Found
-1. **Variable scope bug** - Variables set in `collect_inputs()` are local but used globally
-2. **Path mismatch** - Creates `00-bootstrap/` but bootstrap script expects `bootstrap/`
-3. **Weak CIDR detection** - Only checks exact match, allows overlapping subnets
-
-### Status
-Implementation ~80% complete. Requires critical bug fixes before production use.
-
-### Next Actions
-1. Fix variable scoping issue
-2. Align bootstrap directory naming
-3. Add CIDR overlap detection or document limitation
-4. Add cleanup trap for failure handling
-5. Test on both Linux and macOS
-
-## Risk Assessment
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Invalid HCL syntax | Medium | Test generated files with terragrunt validate |
-| Overwrite existing region | High | Check existence before scaffold |
-| Incomplete dependency graph | Medium | Document dependencies in _envcommon |
-
-## Verification Commands
-
-```bash
-# Verify script syntax
-bash -n scripts/scaffold-region.sh
-
-# Verify generated files
-terragrunt hclfmt
-cd environments/dev/us-west-1
-terragrunt run-all validate
-```

@@ -341,6 +341,7 @@ main() {
     # verify_aws_credentials
     # verify_account_config
 
+
     # Execute
     if $migrate; then
         migrate_state "$env"

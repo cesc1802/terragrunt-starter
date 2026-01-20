@@ -4,7 +4,7 @@
 
 **Terragrunt Starter** - A production-ready infrastructure-as-code project for managing AWS environments with DRY principles and configuration inheritance.
 
-**Status:** Active development (Phase 01: Vendor Terraform Modules completed)
+**Status:** Active development (Phase 03: Scaffold Script completed)
 **Last Updated:** 2026-01-20
 
 ## Directory Structure
@@ -89,8 +89,9 @@ terragrunt-starter/
 │   ├── skills/                       # Python skills and utilities
 │   └── scripts/                      # Additional automation scripts
 │
-├── scripts/                          # Deployment and bootstrap scripts (NEW in Phase 04)
-│   └── bootstrap-tfstate.sh          # Bootstrap S3 + DynamoDB state backend
+├── scripts/                          # Deployment and bootstrap scripts
+│   ├── bootstrap-tfstate.sh          # Bootstrap S3 + DynamoDB state backend (Phase 04)
+│   └── scaffold-region.sh            # Region scaffolding with validation (Phase 03)
 │
 ├── .github/                          # GitHub configuration
 │   └── workflows/                    # CI/CD pipeline definitions (TODO)
@@ -352,7 +353,49 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 02 (Current - _envcommon Updates & Region-Specific CIDR)
+### Phase 03 (Current - Create Scaffold Script)
+
+**Completed:** 2026-01-20
+
+**New Script:**
+1. `scripts/scaffold-region.sh` - Interactive region scaffolding with validation (508 lines)
+
+**Key Features:**
+- Interactive prompts for region, CIDR, AZs, and module selection
+- CIDR validation (format, range /16-/24, no duplicates)
+- CIDR overlap detection using bitwise network math
+- AZ format validation (region + letter a-z)
+- Automatic cleanup on failure (trap handler)
+- Generates directory structure matching existing pattern
+- Template-based terragrunt.hcl generation with heredocs
+- Dependency resolution (RDS depends on VPC, ECS depends on VPC + IAM)
+- POSIX-compatible bash (portable to Linux/macOS)
+
+**Files Created:**
+- `scripts/scaffold-region.sh` - Main scaffolding script
+
+**Usage:**
+```bash
+./scripts/scaffold-region.sh dev       # Create new region in dev
+./scripts/scaffold-region.sh staging   # Create new region in staging
+./scripts/scaffold-region.sh prod      # Create new region in prod
+```
+
+**Generated Files per Region:**
+- `{env}/{region}/region.hcl` - Region variables (aws_region, azs, vpc_cidr)
+- `{env}/{region}/00-bootstrap/tfstate-backend/terragrunt.hcl` - Bootstrap module
+- `{env}/{region}/01-infra/network/vpc/terragrunt.hcl` - VPC module
+- `{env}/{region}/01-infra/security/iam-roles/terragrunt.hcl` - IAM module (optional)
+- `{env}/{region}/01-infra/storage/s3/terragrunt.hcl` - S3 module (optional)
+- `{env}/{region}/01-infra/data-stores/rds/terragrunt.hcl` - RDS module (optional)
+- `{env}/{region}/01-infra/services/ecs-cluster/terragrunt.hcl` - ECS module (optional)
+
+**Documentation Updates (Phase 03):**
+- Updated README.md: Added Step 2 (Scaffold Region Configuration)
+- Updated codebase-summary.md: Added scripts section, Phase 03 details
+- Updated deployment-guide.md: Added new section for region scaffolding
+
+### Phase 02 (_envcommon Updates & Region-Specific CIDR)
 
 **Completed:** 2026-01-20
 
@@ -570,6 +613,29 @@ Comprehensive documentation available in `./docs/`:
 
 ## Next Steps & Roadmap
 
+### Completed (Phase 03 - Create Scaffold Script)
+- ✓ Interactive region scaffolding script with validation
+- ✓ CIDR overlap detection using network math
+- ✓ Automatic directory structure generation
+- ✓ Terragrunt configuration template generation
+- ✓ Dependency resolution in generated configs
+- ✓ Error handling with automatic cleanup
+
+### Completed (Phase 04)
+- ✓ Bootstrap helper script (`scripts/bootstrap-tfstate.sh`) with prerequisite validation
+- ✓ Makefile bootstrap targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
+- ✓ Deployment guide documentation
+
+### Completed (Phase 05)
+- ✓ Common VPC configuration (`_envcommon/networking/vpc.hcl`) with DRY pattern
+- ✓ Dev VPC deployment (`environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl`)
+- ✓ VPC infrastructure documentation
+
+### Completed (Phase 02)
+- ✓ TFState backend configuration (`_envcommon/bootstrap/tfstate-backend.hcl`)
+- ✓ RDS, ECS, S3, IAM module configurations
+- ✓ Region-specific CIDR allocation in region.hcl
+
 ### Completed (Phase 01 - Vendor Terraform Modules)
 - ✓ Vendored terraform-aws-rds (v6.13.1)
 - ✓ Vendored terraform-aws-ecs (v5.12.1)
@@ -577,28 +643,7 @@ Comprehensive documentation available in `./docs/`:
 - ✓ Vendored terraform-aws-iam (v5.60.0)
 - ✓ Created modules/README.md with version tracking and git remotes
 
-### Completed (Phase 02)
-- ✓ TFState backend configuration (`_envcommon/bootstrap/tfstate-backend.hcl`)
-- ✓ S3 + DynamoDB remote state setup
-- ✓ Cloud Posse module integration
-
-### Completed (Phase 03)
-- ✓ Created bootstrap terragrunt.hcl for dev, uat, prod
-- ✓ Fixed root terragrunt.hcl naming (S3 bucket + DynamoDB aligned with Cloud Posse module)
-- ✓ Updated README.md with bootstrap instructions
-- ✓ Environment-specific bootstrap configs with proper tagging
-
-### Completed (Phase 05)
-- ✓ Common VPC configuration (`_envcommon/networking/vpc.hcl`) with DRY pattern
-- ✓ Dev VPC deployment (`environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl`)
-- ✓ VPC infrastructure documentation
-
-### Completed (Phase 04)
-- ✓ Bootstrap helper script (`scripts/bootstrap-tfstate.sh`) with prerequisite validation
-- ✓ Makefile bootstrap targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
-- ✓ Deployment guide documentation
-
-### In Progress (Phase 05+)
+### In Progress (Phase 06+)
 - [x] Create common VPC configuration (_envcommon/networking/vpc.hcl) - Phase 05
 - [x] Deploy dev VPC (environments/dev/us-east-1/01-infra/network/vpc) - Phase 05
 - [ ] Deploy VPC for staging environment

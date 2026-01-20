@@ -41,6 +41,208 @@ aws sts get-caller-identity
 # Output should show your Account ID and User ARN
 ```
 
+## Region Scaffolding
+
+### Overview
+
+The region scaffold script automates creation of directory structure and configuration files for new regions. Instead of manually creating directories and templates, the script prompts for configuration and generates everything.
+
+**Located:** `./scripts/scaffold-region.sh` (508 lines, POSIX-compatible bash)
+
+### When to Use
+
+Use the scaffold script when:
+- Adding a new region to an existing environment
+- Setting up multi-region infrastructure (e.g., prod us-east-1 + eu-west-1)
+- Expanding to new AWS regions for compliance or performance
+
+Do NOT use the script for:
+- Initial environment setup (use manual steps if only deploying single region)
+- Modifying existing region configurations (edit files directly)
+
+### Scaffold Usage
+
+```bash
+# Scaffold new region in dev environment
+./scripts/scaffold-region.sh dev
+
+# Scaffold in staging
+./scripts/scaffold-region.sh staging
+
+# Scaffold in prod
+./scripts/scaffold-region.sh prod
+```
+
+### Interactive Prompts
+
+The script will ask for these inputs:
+
+1. **AWS Region** (required)
+   - Example: `us-east-1`, `eu-west-1`, `ap-southeast-1`
+   - Validated against list of valid AWS regions
+   - Rejects invalid region codes
+
+2. **VPC CIDR** (required)
+   - Example: `10.10.0.0/16`
+   - Validated format: `X.X.X.X/Y` where X=0-255, Y=16-24
+   - Checks for duplicates in environment
+   - Warns if overlaps with existing CIDRs (can override)
+   - Uses bitwise network math for overlap detection
+
+3. **Availability Zones** (required, default: 2)
+   - Example: `us-east-1a,us-east-1b`
+   - Format: `{region}{letter}` (e.g., us-east-1a)
+   - Default: `{region}a,{region}b`
+   - Validates zone names match region
+
+4. **Module Selection** (optional, all default to yes)
+   - NAT Gateway: Configure in `_envcommon/networking/vpc.hcl`
+   - Include RDS? (y/n)
+   - Include ECS? (y/n)
+   - Include S3? (y/n)
+   - Include IAM? (y/n)
+
+5. **Confirmation**
+   - Review summary and confirm with `yes` (exact match required)
+   - Abort with any other response
+
+### What Gets Generated
+
+After confirmation, the script creates:
+
+**Directory Structure:**
+```
+environments/{env}/{region}/
+├── region.hcl                              # Region variables
+├── 00-bootstrap/
+│   └── tfstate-backend/
+│       └── terragrunt.hcl                  # State backend config
+└── 01-infra/
+    ├── network/
+    │   └── vpc/
+    │       └── terragrunt.hcl              # VPC config
+    ├── security/
+    │   └── iam-roles/
+    │       └── terragrunt.hcl              # IAM config (if selected)
+    ├── storage/
+    │   └── s3/
+    │       └── terragrunt.hcl              # S3 config (if selected)
+    └── data-stores/
+        └── rds/
+            └── terragrunt.hcl              # RDS config (if selected)
+```
+
+**region.hcl Example:**
+```hcl
+locals {
+  aws_region = "eu-west-1"
+  azs        = ["eu-west-1a", "eu-west-1b"]
+  vpc_cidr   = "10.20.0.0/16"
+}
+```
+
+**terragrunt.hcl Template:**
+```hcl
+include "root" {
+  path = find_in_parent_folders("root.hcl")
+}
+
+include "envcommon" {
+  path   = "${dirname(find_in_parent_folders("root.hcl"))}/_envcommon/..."
+  expose = true
+}
+
+# Dependencies auto-configured
+dependency "vpc" {
+  config_path = "../../network/vpc"
+}
+
+inputs = {
+  # Environment-specific overrides (if any)
+}
+```
+
+### Validation Features
+
+**CIDR Validation:**
+- Format: Must be valid CIDR notation (X.X.X.X/Y)
+- Range: Prefix must be /16 to /24
+- Duplicates: Rejects exact CIDR matches
+- Overlap: Warns on overlap (uses proper network masking), allows override
+
+**Region Validation:**
+- Checks against list of valid AWS regions
+- Prevents typos (e.g., rejects "us-east-1a" as region)
+
+**AZ Validation:**
+- Format: Must match region code + letter (e.g., eu-west-1a)
+- Multiple AZs: Comma-separated, no spaces required
+
+**Existing Region Check:**
+- Prevents scaffolding duplicate regions
+- Confirms region doesn't already exist
+
+### Error Handling
+
+**Automatic Cleanup:**
+If scaffold fails at any point:
+- Trap handler catches error
+- Removes incomplete directory structure
+- No partial files left behind
+- Script exits with error message
+
+**Typical Failures:**
+- Invalid AWS region code → prompts to retry
+- Invalid CIDR format → prompts to retry
+- CIDR overlap (not overridden) → prompts to retry
+- AZ format mismatch → prompts to retry
+- Region already exists → exit with error
+- Insufficient permissions (mkdir) → cleanup triggered
+
+### Example: Multi-Region Prod Setup
+
+```bash
+# Scaffold primary region
+./scripts/scaffold-region.sh prod
+# → Prompted for us-east-1, 10.30.0.0/16, us-east-1a,us-east-1b
+
+# Scaffold secondary region
+./scripts/scaffold-region.sh prod
+# → Prompted for eu-west-1, 10.40.0.0/16, eu-west-1a,eu-west-1b
+# → Overlap check passes (different networks)
+
+# Result:
+# environments/prod/
+# ├── us-east-1/
+# └── eu-west-1/
+```
+
+### Next Steps After Scaffolding
+
+After scaffold completes:
+
+1. **Review Generated Files**
+   ```bash
+   tree environments/{env}/{region}
+   cat environments/{env}/{region}/region.hcl
+   ```
+
+2. **Bootstrap State Backend**
+   ```bash
+   make bootstrap ENV={env}
+   make bootstrap-migrate ENV={env}
+   ```
+
+3. **Deploy Infrastructure**
+   ```bash
+   make apply-all ENV={env} REGION={region}
+   ```
+
+4. **Verify Deployment**
+   ```bash
+   make bootstrap-verify ENV={env}
+   ```
+
 ## Bootstrap Procedure
 
 ### Purpose

@@ -94,7 +94,31 @@ locals {
 }
 ```
 
-### Step 2: Bootstrap State Backend
+### Step 2: Scaffold Region Configuration
+
+Create directory structure and configuration for a new region:
+
+```bash
+# Scaffold new region in dev environment (interactive prompts)
+./scripts/scaffold-region.sh dev
+
+# Scaffold in staging or prod environment
+./scripts/scaffold-region.sh staging
+./scripts/scaffold-region.sh prod
+```
+
+The script will prompt for:
+- AWS region (us-east-1, eu-west-1, etc.)
+- VPC CIDR block with overlap detection
+- Availability zones
+- Module selection (RDS, ECS, S3, IAM)
+
+This creates:
+- `region.hcl` with region-specific variables
+- Directory structure for all infrastructure modules
+- Terragrunt configurations with proper dependencies
+
+### Step 3: Bootstrap State Backend
 
 Create S3 bucket and DynamoDB table using Terragrunt bootstrap module:
 
@@ -113,7 +137,7 @@ This creates per-environment state backends:
 - Bucket: `{account_name}-{environment}-terraform-state`
 - DynamoDB: `{account_name}-{environment}-terraform-state`
 
-### Step 3: Deploy Infrastructure
+### Step 4: Deploy Infrastructure
 
 ```bash
 # Plan a specific module
