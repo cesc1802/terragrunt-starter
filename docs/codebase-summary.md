@@ -4,7 +4,7 @@
 
 **Terragrunt Starter** - A production-ready infrastructure-as-code project for managing AWS environments with DRY principles and configuration inheritance.
 
-**Status:** Active development (Phase 03: Scaffold Script completed)
+**Status:** Active development (Phase 04: Multi-Region Dev Setup completed)
 **Last Updated:** 2026-01-20
 
 ## Directory Structure
@@ -34,21 +34,28 @@ terragrunt-starter/
 ├── environments/                     # Per-environment and per-region deployments
 │   ├── dev/                          # Development environment
 │   │   ├── env.hcl                   # Dev environment variables (small instance, no deletion protection)
-│   │   └── us-east-1/
-│   │       ├── region.hcl            # Dev region configuration
+│   │   ├── us-east-1/
+│   │   │   ├── region.hcl            # Dev region configuration (CIDR: 10.10.0.0/16, AZs: a,b,c)
+│   │   │   ├── 00-bootstrap/
+│   │   │   │   └── tfstate-backend/
+│   │   │   │       └── terragrunt.hcl  # Dev state backend (Phase 03)
+│   │   │   ├── 01-infra/
+│   │   │   │   ├── network/vpc/terragrunt.hcl  # Dev VPC (Phase 05)
+│   │   │   │   ├── security/iam-roles/terragrunt.hcl
+│   │   │   │   ├── storage/s3/terragrunt.hcl
+│   │   │   │   └── data-stores/rds/terragrunt.hcl
+│   │   │   └── services/
+│   │   │       └── ecs-cluster/terragrunt.hcl
+│   │   └── us-west-1/
+│   │       ├── region.hcl            # Dev region configuration (CIDR: 10.11.0.0/16, AZs: a,b) - Phase 04
 │   │       ├── 00-bootstrap/
-│   │       │   └── tfstate-backend/
-│   │       │       └── terragrunt.hcl  # Dev state backend (Phase 03)
-│   │       ├── 01-infra/
-│   │       │   └── network/
-│   │       │       └── vpc/
-│   │       │           └── terragrunt.hcl  # Dev VPC deployment (Phase 05)
-│   │       ├── data-stores/
-│   │       │   └── rds/
-│   │       │       └── terragrunt.hcl
-│   │       └── services/
-│   │           └── ecs-cluster/
-│   │               └── terragrunt.hcl
+│   │       │   └── tfstate-backend/terragrunt.hcl  # Bootstrap for us-west-1 (Phase 04)
+│   │       └── 01-infra/
+│   │           ├── network/vpc/terragrunt.hcl     # VPC for us-west-1 (Phase 04)
+│   │           ├── security/iam-roles/terragrunt.hcl
+│   │           ├── storage/s3/terragrunt.hcl
+│   │           ├── data-stores/rds/terragrunt.hcl
+│   │           └── services/ecs-cluster/terragrunt.hcl
 │   │
 │   ├── staging/                     # Staging environment
 │   │   ├── env.hcl                   # Staging environment variables (small instance, no deletion protection)
@@ -239,7 +246,7 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 | Environment | Purpose | Instance Size | Multi-AZ | Deletion Protection | Regions |
 |---|---|---|---|---|---|
-| **dev** | Development & testing | t3.micro/small | No | No | us-east-1 |
+| **dev** | Development & testing | t3.micro/small | No | No | us-east-1, us-west-1 (Phase 04) |
 | **staging** | Pre-production validation | t3.small | No | No | us-east-1 |
 | **uat** | User acceptance testing | t3.medium | No | Yes | us-east-1 |
 | **prod** | Production workloads | r6g.large | Yes | Yes | us-east-1, eu-west-1 |
@@ -353,7 +360,36 @@ environments/{env}/{region}/{category}/{module}/terragrunt.hcl
 
 ## Recent Changes
 
-### Phase 03 (Current - Create Scaffold Script)
+### Phase 04 (Current - Multi-Region Dev Setup)
+
+**Completed:** 2026-01-20
+
+**New Region:** us-west-1 for development environment
+
+**Files Created:**
+1. `environments/dev/us-west-1/region.hcl` - Region configuration (us-west-1, 2 AZs, CIDR 10.11.0.0/16)
+2. `environments/dev/us-west-1/00-bootstrap/tfstate-backend/terragrunt.hcl` - Bootstrap module
+3. `environments/dev/us-west-1/01-infra/network/vpc/terragrunt.hcl` - VPC deployment
+4. `environments/dev/us-west-1/01-infra/security/iam-roles/terragrunt.hcl` - IAM roles
+5. `environments/dev/us-west-1/01-infra/storage/s3/terragrunt.hcl` - S3 bucket
+6. `environments/dev/us-west-1/01-infra/data-stores/rds/terragrunt.hcl` - RDS instance
+7. `environments/dev/us-west-1/01-infra/services/ecs-cluster/terragrunt.hcl` - ECS cluster
+
+**Key Features:**
+- Non-overlapping CIDR: 10.11.0.0/16 (vs us-east-1's 10.10.0.0/16)
+- 2 availability zones: us-west-1a, us-west-1b
+- Dynamic naming: fng-dev-usw1-* (regional prefix via account.hcl)
+- Proper dependency chain: VPC → RDS/ECS (with IAM)
+- Reuses _envcommon configurations for all modules
+- Scaffold-region.sh created files (Phase 03) with validation
+
+**Purpose:** Demonstrate multi-region scalability within single environment; production uses multiple environments per region.
+
+**Documentation Updates (Phase 04):**
+- Updated codebase-summary.md: Directory structure, Phase 04 section
+- Updated system-architecture.md: Multi-region region expansion (planned)
+
+### Phase 03 (Create Scaffold Script)
 
 **Completed:** 2026-01-20
 
@@ -613,6 +649,13 @@ Comprehensive documentation available in `./docs/`:
 
 ## Next Steps & Roadmap
 
+### Completed (Phase 04 - Multi-Region Dev Setup)
+- ✓ Created us-west-1 region for dev environment
+- ✓ Non-overlapping CIDR allocation (10.11.0.0/16)
+- ✓ All modules deployed: VPC, IAM, S3, RDS, ECS
+- ✓ Proper dependency resolution across regions
+- ✓ Dynamic naming via account.hcl (fng-dev-usw1-*)
+
 ### Completed (Phase 03 - Create Scaffold Script)
 - ✓ Interactive region scaffolding script with validation
 - ✓ CIDR overlap detection using network math
@@ -621,12 +664,12 @@ Comprehensive documentation available in `./docs/`:
 - ✓ Dependency resolution in generated configs
 - ✓ Error handling with automatic cleanup
 
-### Completed (Phase 04)
+### Completed (Phase 02 - Bootstrap & _envcommon)
 - ✓ Bootstrap helper script (`scripts/bootstrap-tfstate.sh`) with prerequisite validation
 - ✓ Makefile bootstrap targets: bootstrap, bootstrap-migrate, bootstrap-verify, bootstrap-all
 - ✓ Deployment guide documentation
 
-### Completed (Phase 05)
+### Completed (Phase 01 - VPC & Terraform Modules)
 - ✓ Common VPC configuration (`_envcommon/networking/vpc.hcl`) with DRY pattern
 - ✓ Dev VPC deployment (`environments/dev/us-east-1/01-infra/network/vpc/terragrunt.hcl`)
 - ✓ VPC infrastructure documentation

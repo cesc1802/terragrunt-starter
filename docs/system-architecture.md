@@ -140,15 +140,15 @@ All infrastructure-as-code leverages official Terraform AWS modules via git subt
 - **Database Subnet Group:** Auto-created
 - **Default Security Group:** Locked down (no ingress/egress)
 
-#### Environment-Specific Settings (Phase 05)
+#### Environment-Specific Settings (Phase 04+)
 
-| Setting | Dev | Staging | UAT | Prod |
-|---|---|---|---|---|
-| VPC CIDR | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 | 10.40.0.0/16, 10.50.0.0/16 |
-| AZs | 3 | 3 | 3 | 3 |
-| Public Subnets | 3×/24 (+1,2,3) | 3×/24 | 3×/24 | 3×/24 |
-| Private Subnets | 3×/24 (+11,12,13) | 3×/24 | 3×/24 | 3×/24 |
-| Database Subnets | 3×/24 (+21,22,23) | 3×/24 | 3×/24 | 3×/24 |
+| Setting | Dev (us-east-1) | Dev (us-west-1) | Staging | UAT | Prod |
+|---|---|---|---|---|---|
+| VPC CIDR | 10.10.0.0/16 | 10.11.0.0/16 (Phase 04) | 10.20.0.0/16 | 10.30.0.0/16 | 10.40.0.0/16, 10.50.0.0/16 |
+| AZs | 3 (a,b,c) | 2 (a,b) | 3 | 3 | 3 |
+| Public Subnets | 3×/24 (+1,2,3) | 2×/24 | 3×/24 | 3×/24 | 3×/24 |
+| Private Subnets | 3×/24 (+11,12,13) | 2×/24 | 3×/24 | 3×/24 | 3×/24 |
+| Database Subnets | 3×/24 (+21,22,23) | 2×/24 | 3×/24 | 3×/24 | 3×/24 |
 | NAT Gateway | Disabled | Enabled | Enabled | Enabled (per-AZ) |
 | Flow Logs | Disabled | Disabled | Disabled | Enabled |
 | IGW | Yes | Yes | Yes | Yes |
